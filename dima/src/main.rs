@@ -8,7 +8,6 @@ fn main() -> std::io::Result<()> {
     let input_file = args.next().unwrap();
     let mut input = String::new();
     File::open(input_file)?.read_to_string(&mut input)?;
-    println!("{:?}", day1::solve(&input[..]));
-    println!("{:?}", day1::solve2(&input[..]));
+    println!("{:?}", day1::solve(&input));
     Ok(())
 }
