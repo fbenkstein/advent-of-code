@@ -5,14 +5,13 @@ use std::collections::HashSet;
 use std::io::{self, prelude::*};
 
 fn count_reps<'a>(input: impl Iterator<Item = &'a Vec<u8>>, len: usize) -> usize {
-    input
-        .map(|x| {
-            x.iter()
-                .group_by(|c| *c)
-                .into_iter()
-                .any(|(_, list)| list.count() == len) as usize
-        })
-        .sum()
+    let has_len = |x: &&Vec<u8>| {
+        x.iter()
+            .group_by(|c| *c)
+            .into_iter()
+            .any(|(_, list)| list.count() == len)
+    };
+    input.filter(has_len).count()
 }
 
 fn solve_part1(mut input: Vec<Vec<u8>>) {
@@ -26,13 +25,12 @@ fn solve_part1(mut input: Vec<Vec<u8>>) {
 fn solve_part2(input: &Vec<String>) {
     let mut seen = HashSet::new();
     for x in input {
-        let substrs: Vec<_> = (0..x.len())
-            .map(|i| {
-                let mut sub = x.clone();
-                sub.remove(i);
-                sub
-            })
-            .collect();
+        let create_substr = |i: usize| {
+            let mut sub = x.clone();
+            sub.remove(i);
+            sub
+        };
+        let substrs: Vec<_> = (0..x.len()).map(create_substr).collect();
         for sub in &substrs {
             if seen.contains(sub) {
                 println!("Substring with only one char different: {}", sub);
