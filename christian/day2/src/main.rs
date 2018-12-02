@@ -23,22 +23,15 @@ fn solve_part1(mut input: Vec<Vec<u8>>) {
 }
 
 fn solve_part2(input: &Vec<String>) {
-    let mut seen = HashSet::new();
-    for line in input {
-        let create_substr = |i: usize| {
+    for i in 0..input[0].len() {
+        let mut seen = HashSet::new();
+        for line in input {
             let mut sub = line.clone();
             sub.remove(i);
-            (i, sub)
-        };
-        let substrs: Vec<_> = (0..line.len()).map(create_substr).collect();
-        for x in &substrs {
-            if seen.contains(x) {
-                println!("Substring with only one char different: {} @ {}", x.1, x.0);
+            if !seen.insert(sub.clone()) {
+                println!("Substring with only one char different: {}", sub);
                 return;
             }
-        }
-        for x in substrs {
-            seen.insert(x);
         }
     }
 }
