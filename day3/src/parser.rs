@@ -27,23 +27,6 @@ impl Claim {
             },
         }
     }
-
-    // pub fn intersection(self: &Self, other: &Claim) -> Option<u64> {
-    //     let top_left = Point {
-    //         x: self.top_left.x.max(other.top_left.x),
-    //         y: self.top_left.y.max(other.top_left.y),
-    //     };
-    //     let bottom_right = Point {
-    //         x: self.bottom_right.x.min(other.bottom_right.x),
-    //         y: self.bottom_right.y.min(other.bottom_right.y),
-    //     };
-
-    //     if top_left.x < bottom_right.x && bottom_right.y > top_left.y {
-    //         Some((bottom_right.x - top_left.x) * (bottom_right.y - top_left.y))
-    //     } else {
-    //         None
-    //     }
-    // }
 }
 
 named!(parse_u64(CompleteStr) -> u64,
@@ -85,10 +68,5 @@ fn parse_intersect() {
 #3 @ 5,5: 2x2
 "#;
     let claims = parse_claims(CompleteStr(input)).unwrap().1;
-    // assert_eq!(claims.len(), 3);
-    // assert_eq!(*&claims[0].intersection(&claims[1]), Some(4));
-    // assert_eq!(*&claims[0].intersection(&claims[2]), None);
-    // assert_eq!(*&claims[1].intersection(&claims[2]), None);
-
-    // assert_eq!(&claims[0].intersection(&claims[1]), &Some(4 as u64));
+    assert_eq!(claims.len(), 3);
 }
