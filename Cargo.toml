@@ -5,3 +5,5 @@ authors = ["Frank Benkstein <frank@benkstein.net>"]
 
 [dependencies]
 itertools = "0.7"
+regex = "1"
+lazy_static = "1.2.0"
