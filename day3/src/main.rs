@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::prelude::*;
 
 fn main() {
-    let mut file = File::open("input2.txt").expect("file not found");
+    let mut file = File::open("input.txt").expect("file not found");
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .expect("could not read file");
@@ -28,7 +28,5 @@ fn main() {
     });
 
     let intersection_inches = canvas.iter().filter(|&inch| *inch >= 2).count();
-    // why you incorrect?!
-
     println!("{}", intersection_inches);
 }
