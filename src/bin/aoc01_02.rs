@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 fn main() {
-    let data = include_str!("input_a.txt");
+    let data = include_str!("input_01.txt");
     let mut current_freq = 0;
     let mut seen_freqs = BTreeSet::new();
     seen_freqs.insert(current_freq);

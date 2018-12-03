@@ -1,5 +1,5 @@
 fn main() {
-    let data = include_str!("input_a.txt");
+    let data = include_str!("input_01.txt");
     let mut sum = 0;
 
     for line in data.lines() {
