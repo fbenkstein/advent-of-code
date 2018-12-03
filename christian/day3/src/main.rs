@@ -32,37 +32,22 @@ fn parse(input: &Vec<String>) -> Vec<Rect> {
         .collect()
 }
 
-fn max_coord(input: &Vec<Rect>) -> (usize, usize) {
-    input.iter().fold((0, 0), |(max_x, max_y), x| {
-        (
-            cmp::max(cmp::max(max_x, x.x), x.x + x.x_dim),
-            cmp::max(cmp::max(max_y, x.y), x.y + x.y_dim),
-        )
-    })
-}
-
 fn solve(input: &Vec<Rect>) {
-    let dim = max_coord(input);
+    let dim = input.iter().fold((0, 0), |(x, y), r| {
+        (cmp::max(x, r.x + r.x_dim), cmp::max(y, r.y + r.y_dim))
+    });
     let mut data = Vec::with_capacity(dim.0 * dim.1);
     data.resize(dim.0 * dim.1, 0_usize);
 
-    for rect in input {
-        for (x, y) in iproduct!(rect.x..rect.x + rect.x_dim, rect.y..rect.y + rect.y_dim) {
-            data[x + y * dim.0] += 1;
-        }
-    }
+    let cells =
+        |r: &Rect| iproduct!(r.x..r.x + r.x_dim, r.y..r.y + r.y_dim).map(|(x, y)| x + y * dim.1);
 
-    println!(
-        "Num contested squares: {}",
-        data.iter().filter(|x| **x > 1).count()
-    );
+    input.iter().map(cells).flatten().for_each(|x| data[x] += 1);
 
-    for rect in input {
-        if iproduct!(rect.x..rect.x + rect.x_dim, rect.y..rect.y + rect.y_dim)
-            .all(|(x, y)| data[x + y * dim.0] == 1)
-        {
-            println!("Not contested: {:?}", rect);
-        }
+    println!("#Squares > 1: {}", data.iter().filter(|&&x| x > 1).count());
+
+    for r in input.iter().filter(|r| cells(r).all(|x| data[x] == 1)) {
+        println!("Not contested: {:?}", r);
     }
 }
 
