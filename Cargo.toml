@@ -7,3 +7,4 @@ authors = ["Frank Benkstein <frank@benkstein.net>"]
 itertools = "0.7"
 regex = "1"
 lazy_static = "1.2.0"
+chrono = "0.4"
