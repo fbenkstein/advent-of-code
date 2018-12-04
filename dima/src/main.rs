@@ -1,6 +1,7 @@
 mod day1;
 mod day2;
 mod day3;
+mod day4;
 
 use std::fs::File;
 use std::io::Read;
@@ -17,6 +18,7 @@ fn main() -> std::io::Result<()> {
         1 => println!("{:?}", day1::solve(&input)),
         2 => println!("{:?}", day2::solve(&input)),
         3 => println!("{:?}", day3::solve(&input)),
+        4 => println!("{:?}", day4::solve(&input)),
         _ => eprintln!("invalid day: {}", day),
     }
     Ok(())
