@@ -1,12 +1,12 @@
-extern crate regex;
+#[macro_use]
+extern crate text_io;
 #[macro_use]
 extern crate itertools;
 
-use regex::Regex;
 use std::cmp;
 use std::io::{self, prelude::*};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Rect {
     id: usize,
     x: usize,
@@ -16,20 +16,12 @@ struct Rect {
 }
 
 fn parse(input: &Vec<String>) -> Vec<Rect> {
-    let re = Regex::new(r"^#(\d+) @ (\d+),(\d+): (\d+)x(\d+)$").unwrap();
-    input
-        .iter()
-        .map(|x| {
-            let groups = re.captures(x).unwrap();
-            Rect {
-                id: groups[1].parse().unwrap(),
-                x: groups[2].parse().unwrap(),
-                y: groups[3].parse().unwrap(),
-                x_dim: groups[4].parse().unwrap(),
-                y_dim: groups[5].parse().unwrap(),
-            }
-        })
-        .collect()
+    let convert = |x: &String| {
+        let mut rect: Rect = Default::default();
+        scan!(x.bytes() => "#{} @ {},{}: {}x{}",rect.id,rect.x,rect.y,rect.x_dim,rect.y_dim);
+        rect
+    };
+    input.iter().map(convert).collect()
 }
 
 fn solve(input: &Vec<Rect>) {
