@@ -1,0 +1,7 @@
+[package]
+name = "advent_of_code"
+version = "0.1.0"
+authors = ["Christian Ocker <ocker.christian@gmail.com>"]
+
+[dependencies]
+char-iter = "0.1"
