@@ -5,3 +5,4 @@ authors = ["Christian Ocker <ocker.christian@gmail.com>"]
 
 [dependencies]
 char-iter = "0.1"
+itertools = "0.7.11"
