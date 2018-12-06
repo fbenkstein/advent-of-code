@@ -1,20 +1,9 @@
-use std::cmp::Ordering;
+use itertools::iproduct;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Point {
     x: i32,
     y: i32,
-}
-
-const ZERO: Point = Point { x: 0, y: 0 };
-
-impl PartialOrd for Point {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match manhattan_distance(self, &ZERO).cmp(&manhattan_distance(other, &ZERO)) {
-            Ordering::Equal => None,
-            other => Some(other),
-        }
-    }
 }
 
 fn manhattan_distance(a: &Point, b: &Point) -> i32 {
@@ -42,18 +31,7 @@ fn area(grid: &[Option<Point>], width: i32, height: i32, origin: &Point) -> Opti
     Some(counter)
 }
 
-pub fn solve(input: &str) -> usize {
-    let points: Vec<Point> = input
-        .lines()
-        .map(|line| {
-            let mut it = line.split(", ");
-            let x = it.next().unwrap().parse().unwrap();
-            let y = it.next().unwrap().parse().unwrap();
-            Point { x, y }
-        })
-        .collect();
-    let width = points.iter().map(|pt| pt.x).max().unwrap() + 1;
-    let height = points.iter().map(|pt| pt.y).max().unwrap() + 1;
+fn solve1(points: &[Point], width: i32, height: i32) -> usize {
     let mut grid: Vec<Option<Point>> = vec![None; (width * height) as usize];
 
     for x in 0..width {
@@ -89,18 +67,65 @@ pub fn solve(input: &str) -> usize {
         .unwrap()
 }
 
+fn solve2(points: &[Point], width: i32, height: i32, max_distance: i32) -> usize {
+    iproduct!((0..width), (0..height))
+        .filter_map(|(x, y)| {
+            let total_distance: i32 = points
+                .iter()
+                .map(|pt| manhattan_distance(&Point { x, y }, pt))
+                .sum();
+            if total_distance < max_distance {
+                Some(1)
+            } else {
+                None
+            }
+        })
+        .sum()
+}
+
+fn parse(input: &str) -> (Vec<Point>, i32, i32) {
+    let points: Vec<Point> = input
+        .lines()
+        .map(|line| {
+            let mut it = line.split(", ");
+            let x = it.next().unwrap().parse().unwrap();
+            let y = it.next().unwrap().parse().unwrap();
+            Point { x, y }
+        })
+        .collect();
+    let width = points.iter().map(|pt| pt.x).max().unwrap() + 1;
+    let height = points.iter().map(|pt| pt.y).max().unwrap() + 1;
+    (points, width, height)
+}
+
+pub fn solve(input: &str) -> (usize, usize) {
+    let (points, width, height) = parse(input);
+    (
+        solve1(&points[..], width, height),
+        solve2(&points[..], width, height, 10_000),
+    )
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
-    #[test]
-    fn test_largest_area() {
-        const INPUT: &str = r#"1, 1
+    const INPUT: &str = r#"1, 1
 1, 6
 8, 3
 3, 4
 5, 5
 8, 9"#;
-        assert_eq!(solve(INPUT), 17);
+
+    #[test]
+    fn test_solve1() {
+        let (points, width, height) = parse(INPUT);
+        assert_eq!(solve1(&points[..], width, height), 17);
+    }
+
+    #[test]
+    fn test_solve2() {
+        let (points, width, height) = parse(INPUT);
+        assert_eq!(solve2(&points[..], width, height, 32), 16);
     }
 }
