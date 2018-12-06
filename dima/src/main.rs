@@ -5,13 +5,21 @@ mod day4;
 mod day5;
 mod day6;
 
+use regex;
+use std::error::Error;
 use std::fs::File;
 use std::io::Read;
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Box<Error>> {
     let mut args = std::env::args().skip(1);
-    let day: u8 = args.next().unwrap().parse().unwrap();
-    let input_file = args.next().unwrap();
+    let input_file = args.next().ok_or("Usage: advent-of-code-2018 <day.txt>")?;
+
+    let re = regex::Regex::new(r"^.*day(\d+).txt$")?;
+    let day: u8 = re
+        .captures(&input_file)
+        .and_then(|c| c.get(1).map(|g| g.as_str()))
+        .ok_or_else(|| format!("can't deduce day from: {}", input_file))?
+        .parse()?;
 
     let mut input = String::new();
     File::open(input_file)?.read_to_string(&mut input)?;
