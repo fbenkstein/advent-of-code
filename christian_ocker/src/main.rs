@@ -1,13 +1,18 @@
 mod day1;
 mod day2;
 mod day3;
+mod day4;
 mod day5;
+mod day6;
+
+#[macro_use]
+extern crate itertools;
 
 #[macro_use]
 extern crate scan_fmt;
 
 #[macro_use]
-extern crate itertools;
+extern crate text_io;
 
 use std::fs::File;
 use std::io::Read;
@@ -25,6 +30,7 @@ fn main() -> std::io::Result<()> {
         2 => println!("{:?}", day2::solve(&input)),
         3 => println!("{:?}", day3::solve(&input)),
         5 => println!("{:?}", day5::solve(&input)),
+        6 => println!("{:?}", day6::solve(&input)),
         _ => eprintln!("invalid day: {}", day),
     }
     Ok(())
