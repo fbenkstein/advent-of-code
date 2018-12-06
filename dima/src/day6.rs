@@ -14,57 +14,34 @@ fn is_edge_point(x: i32, y: i32, width: i32, height: i32) -> bool {
     x == 0 || y == 0 || x + 1 == width || y + 1 == height
 }
 
-fn area(grid: &[Option<Point>], width: i32, height: i32, origin: &Point) -> Option<usize> {
-    let mut counter = 0;
+fn solve1(points: &[Point], width: i32, height: i32) -> usize {
+    let mut areas = vec![Some(0); points.len()];
     for x in 0..width {
         for y in 0..height {
-            if let Some(pt) = &grid[(x + width * y) as usize] {
-                if pt == origin {
-                    if is_edge_point(x, y, width, height) {
-                        return None;
+            let origin = Point { x, y };
+            let (_, min_pos) = points.iter().enumerate().fold(
+                (i32::max_value(), None),
+                |(min_d, min_pos), (pos, pt)| {
+                    let d = manhattan_distance(pt, &origin);
+                    if d < min_d {
+                        (d, Some(pos))
+                    } else if d == min_d {
+                        (min_d, None)
+                    } else {
+                        (min_d, min_pos)
                     }
-                    counter += 1;
+                },
+            );
+            if let Some(pos) = min_pos {
+                if is_edge_point(x, y, width, height) {
+                    areas[pos] = None;
+                } else {
+                    areas[pos].as_mut().map(|a| *a += 1);
                 }
             }
         }
     }
-    Some(counter)
-}
-
-fn solve1(points: &[Point], width: i32, height: i32) -> usize {
-    let mut grid: Vec<Option<Point>> = vec![None; (width * height) as usize];
-
-    for x in 0..width {
-        for y in 0..height {
-            let origin = Point { x, y };
-            let (_, min_pt) = points.iter().fold(
-                (
-                    i32::max_value(),
-                    Some(Point {
-                        x: width,
-                        y: height,
-                    }),
-                ),
-                |(min_d, min_pt), pt| {
-                    let d = manhattan_distance(pt, &origin);
-                    if d < min_d {
-                        (d, Some(*pt))
-                    } else if d == min_d {
-                        (min_d, None)
-                    } else {
-                        (min_d, min_pt)
-                    }
-                },
-            );
-            grid[(x + width * y) as usize] = min_pt;
-        }
-    }
-
-    points
-        .iter()
-        .filter_map(|pt| area(&grid[..], width, height, pt))
-        .max()
-        .unwrap()
+    areas.into_iter().filter_map(|x| x).max().unwrap()
 }
 
 fn solve2(points: &[Point], width: i32, height: i32, max_distance: i32) -> usize {
