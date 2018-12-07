@@ -2,6 +2,7 @@
 name = "advent-of-code"
 version = "0.1.0"
 authors = ["Frank Benkstein <frank@benkstein.net>"]
+edition = "2018"
 
 [dependencies]
 itertools = "0.7"

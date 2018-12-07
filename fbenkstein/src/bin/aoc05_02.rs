@@ -19,14 +19,14 @@ where
     fn react(&mut self) -> Vec<Self::Item> {
         let mut result = Vec::<T>::new();
 
-        while let Some(unit) = self.next() {
-            let maybe_last_unit = result.last().cloned();
+        while let Some(ref unit) = self.next() {
+            let maybe_last_unit = result.last();
 
-            match &maybe_last_unit {
+            match maybe_last_unit {
                 Some(last_unit) if last_unit.reacts_with(unit) => {
                     result.pop();
                 }
-                _ => result.push(unit),
+                _ => result.push(unit.clone()),
             }
         }
 
