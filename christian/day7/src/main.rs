@@ -29,26 +29,28 @@ fn get_edges(edges: &Vec<Edge>, from: usize) -> impl Iterator<Item = &Edge> {
     suffix.take_while(move |edge| edge.from == from)
 }
 
+fn create_in_edge_count(edges: &Vec<Edge>) -> Vec<usize> {
+    let max = edges.iter().map(|x| x.to).max().unwrap() + 1;
+    let max = max.max(edges.iter().map(|x| x.from).max().unwrap() + 1);
+    let mut num_in_edges = vec![0; max];
+    for edge in edges {
+        num_in_edges[edge.to] += 1;
+    }
+    num_in_edges
+}
+
 // This is a topological sort on steroids:
 // It supports "delay" for each node
 // It supports only having a certain amount of work "in progress" in parallel
 // The simple version has one thing in progress, and no delay
 fn solve(input: &Vec<Edge>, worker: usize, delay: impl Fn(usize, usize) -> usize) {
-    let max = input.iter().map(|x| x.to).max().unwrap() + 1;
-    let max = max.max(input.iter().map(|x| x.from).max().unwrap() + 1);
-    let mut num_in_edges = vec![0; max];
-    for edge in input {
-        num_in_edges[edge.to] += 1;
-    }
+    let mut num_in_edges = create_in_edge_count(input);
 
-    let mut queue = BinaryHeap::new();
-    for (i, &count) in num_in_edges.iter().enumerate() {
-        if count == 0 {
-            queue.push(RevOrd(i));
-        }
-    }
+    let start_iter = num_in_edges.iter().enumerate().filter(|(_, x)| **x == 0);
+    let mut queue: BinaryHeap<_> = start_iter.map(|(x, _)| RevOrd(x)).collect();
+
     let mut in_progress = BinaryHeap::new();
-    let add_work = |time: usize, in_progress: &mut BinaryHeap<_>, queue: &mut BinaryHeap<_>| {
+    let add_work = |time, in_progress: &mut BinaryHeap<_>, queue: &mut BinaryHeap<_>| {
         for RevOrd(x) in (in_progress.len()..worker).flat_map(|_| queue.pop()) {
             in_progress.push(RevOrd((delay(time, x), x)));
         }
