@@ -112,9 +112,8 @@ fn main() {
                 id,
             )
         })
-        .minmax()
-        .into_option()
-        .map(|((_min_count, _min_id), (_max_count, max_id))| *max_id)
+        .max()
+        .map(|(_max_count, max_id)| *max_id)
         .unwrap();
 
     let mut minute_asleep_counts: BTreeMap<u32, u32> = BTreeMap::new();
@@ -134,9 +133,8 @@ fn main() {
 
     let max_minute = minute_asleep_counts
         .iter()
-        .minmax_by_key(|(_minute, count)| *count)
-        .into_option()
-        .map(|((_min_minute, _min_count), (max_minute, _max_count))| *max_minute)
+        .max_by_key(|(_minute, count)| *count)
+        .map(|(max_minute, _max_count)| *max_minute)
         .unwrap();
 
     println!("{:?}", most_asleep_guard_id * max_minute);

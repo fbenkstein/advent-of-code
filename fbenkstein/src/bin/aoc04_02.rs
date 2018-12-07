@@ -129,15 +129,11 @@ fn main() {
                 minute,
                 guard_asleep_counts
                     .iter()
-                    .minmax_by_key(|(_guard, count)| *count)
-                    .into_option()
-                    .map(|(_min, max)| max)
+                    .max_by_key(|(_guard, count)| *count)
                     .unwrap(),
             )
         })
-        .minmax_by_key(|(_minute, (_most_asleep_guard_id, count))| *count)
-        .into_option()
-        .map(|(_min, max)| max)
+        .max_by_key(|(_minute, (_most_asleep_guard_id, count))| *count)
         .map(|(minute, (most_asleep_guard_id, _count))| {
             println!("{:?}", *minute * *most_asleep_guard_id)
         });
