@@ -102,5 +102,8 @@ fn main() {
         }
     }
 
-    println!("{}", covered_cell_counts.values().filter(|x| **x > 1).count());
+    println!(
+        "{}",
+        covered_cell_counts.values().filter(|x| **x > 1).count()
+    );
 }

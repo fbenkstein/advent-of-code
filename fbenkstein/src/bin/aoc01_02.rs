@@ -6,16 +6,22 @@ fn main() {
     let mut seen_freqs = BTreeSet::new();
     seen_freqs.insert(current_freq);
 
-    let input = std::iter::repeat(data).map(|s| s.lines()).flatten().map(|s| {
-        let sign = s.get(0..1).and_then(|s| match s {
-            "+" => Some(1),
-            "-" => Some(-1),
-            _ => None,
-        }).unwrap();
-        let value: i32 = s.get(1..).unwrap().parse().unwrap();
-        let change = sign * value;
-        change
-    });
+    let input = std::iter::repeat(data)
+        .map(|s| s.lines())
+        .flatten()
+        .map(|s| {
+            let sign = s
+                .get(0..1)
+                .and_then(|s| match s {
+                    "+" => Some(1),
+                    "-" => Some(-1),
+                    _ => None,
+                })
+                .unwrap();
+            let value: i32 = s.get(1..).unwrap().parse().unwrap();
+            let change = sign * value;
+            change
+        });
 
     for change in input {
         current_freq += change;
