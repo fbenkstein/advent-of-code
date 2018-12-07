@@ -4,6 +4,7 @@ mod day3;
 mod day4;
 mod day5;
 mod day6;
+mod day7;
 
 use regex;
 use std::error::Error;
@@ -31,6 +32,7 @@ fn main() -> Result<(), Box<Error>> {
         4 => println!("{:?}", day4::solve(&input)),
         5 => println!("{:?}", day5::solve(&input)),
         6 => println!("{:?}", day6::solve(&input)),
+        7 => println!("{:?}", day7::solve(&input)),
         _ => eprintln!("invalid day: {}", day),
     }
     Ok(())
