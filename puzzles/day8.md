@@ -36,7 +36,7 @@ The first check done on the license file is to simply add up all of the metadata
 
 What is the sum of all metadata entries?
 
-# Part Two ---
+## Part Two
 
 The second check is slightly more complicated: you need to find the value of the root node (A in the example above).
 
