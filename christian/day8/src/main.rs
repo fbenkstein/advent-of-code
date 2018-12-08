@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate text_io;
-//use revord::RevOrd;
-//use std::collections::BinaryHeap;
 use std::io::{self, prelude::*};
 
 #[derive(Default, Debug)]
