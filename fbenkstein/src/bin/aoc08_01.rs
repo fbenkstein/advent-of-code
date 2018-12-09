@@ -13,13 +13,13 @@ impl Node {
         Node { children, metadata }
     }
 
-    fn flatten(self) -> Vec<Node> {
+    fn flatten(&self) -> Vec<&Node>{
         let mut nodes = Vec::new();
         nodes.push(self);
         let mut i = 0;
 
         while i < nodes.len() {
-            let more_nodes = nodes[i].children.clone();
+            let more_nodes = &nodes[i].children;
             nodes.extend(more_nodes);
             i += 1;
         }
