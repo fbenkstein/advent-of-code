@@ -8,40 +8,13 @@ fn parse(input: &str) -> Result<(usize, usize), Box<Error>> {
     Ok((num_players, num_marbles))
 }
 
-#[derive(Debug)]
-struct PlacedMarble {
-    prev: usize,
-    next: usize,
-    value: usize,
-}
-
-impl PlacedMarble {
-    fn advance(mut pos: usize, num_steps: isize, storage: &[PlacedMarble]) -> usize {
-        if num_steps > 0 {
-            for _ in 0..num_steps {
-                pos = storage[pos].next;
-            }
-            pos
-        } else {
-            for _ in num_steps..0 {
-                pos = storage[pos].prev;
-            }
-            pos
-        }
-    }
-}
-
-fn print_marbles(storage: &[PlacedMarble]) {
-    let mut marble = &storage[0];
-    print!("{} ", marble.value);
-    while marble.next != 0 {
-        marble = &storage[marble.next];
-        print!("{} ", marble.value);
-    }
-    println!();
-}
-
 fn highest_score(num_players: usize, num_marbles: usize) -> usize {
+    struct PlacedMarble {
+        prev: usize,
+        next: usize,
+        value: usize,
+    };
+
     let mut scores = vec![0; num_players];
     let mut storage = Vec::with_capacity(num_marbles);
     storage.push(PlacedMarble {
@@ -56,7 +29,8 @@ fn highest_score(num_players: usize, num_marbles: usize) -> usize {
         if marble % 23 != 0 {
             let new_marble_index = storage.len();
 
-            let next_marble_index = PlacedMarble::advance(cur_marble_index, 2, &storage);
+            // advance +2
+            let next_marble_index = storage[storage[cur_marble_index].next].next;
             let next_marble = &mut storage[next_marble_index];
             let prev_marble_index = next_marble.prev;
 
@@ -74,21 +48,28 @@ fn highest_score(num_players: usize, num_marbles: usize) -> usize {
 
             cur_marble_index = new_marble_index;
         } else {
-            scores[cur_player] += marble;
+            // advance -7
+            let rem_marble_index = cur_marble_index;
+            let rem_marble_index = storage[rem_marble_index].prev;
+            let rem_marble_index = storage[rem_marble_index].prev;
+            let rem_marble_index = storage[rem_marble_index].prev;
+            let rem_marble_index = storage[rem_marble_index].prev;
+            let rem_marble_index = storage[rem_marble_index].prev;
+            let rem_marble_index = storage[rem_marble_index].prev;
+            let rem_marble_index = storage[rem_marble_index].prev;
 
-            let rem_marble_index = PlacedMarble::advance(cur_marble_index, -7, &storage);
             let rem_marble = &storage[rem_marble_index];
-            scores[cur_player] += rem_marble.value;
-
-            let rem_marble_prev = rem_marble.prev;
-            let rem_marble_next = rem_marble.next;
-            cur_marble_index = rem_marble_next;
+            scores[cur_player] += marble + rem_marble.value;
 
             // remove marble
+            let rem_marble_prev = rem_marble.prev;
+            let rem_marble_next = rem_marble.next;
             let prev_marble = &mut storage[rem_marble_prev];
             prev_marble.next = rem_marble_next;
             let next_marble = &mut storage[rem_marble_next];
             next_marble.prev = rem_marble_prev;
+
+            cur_marble_index = rem_marble_next;
         }
         cur_player = (cur_player + 1) % num_players;
     }
@@ -96,11 +77,10 @@ fn highest_score(num_players: usize, num_marbles: usize) -> usize {
 }
 
 pub fn solve(input: &str) -> Result<(usize, usize), Box<Error>> {
-    // let part_1 =
-    //     parse(input).map(|(num_players, num_marbles)| highest_score(num_players, num_marbles))?;
-    let part_2 = parse(input)
-        .map(|(num_players, num_marbles)| highest_score(num_players, 100 * num_marbles))?;
-    Ok((0, part_2))
+    let (num_players, num_marbles) = parse(input)?;
+    let part_1 = highest_score(num_players, num_marbles);
+    let part_2 = highest_score(num_players, 100 * num_marbles);
+    Ok((part_1, part_2))
 }
 
 #[cfg(test)]
