@@ -52,7 +52,6 @@ impl Node {
     }
 
     fn value(&self, sum: usize) -> usize {
-        let mut total = 0;
         if self.nodes.len() == 0 {
             sum + self.metadata_sum()
         } else {

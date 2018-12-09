@@ -1,6 +1,6 @@
 mod parser;
 
-use crate::parser::{Action, DateTime, SpyingEvent};
+use crate::parser::Action;
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -23,7 +23,6 @@ fn main() {
     events.sort();
 
     let mut last_guard_id = 0;
-    let mut most_asleep: HashMap<(u32, u8), u32> = HashMap::new();
     let mut total_asleep: HashMap<u32, u32> = HashMap::new();
     let mut asleep: HashMap<u32, HashMap<u8, u32>> = HashMap::new();
     for (event, next_event) in events.iter().zip(events.iter().skip(1)) {
@@ -33,7 +32,6 @@ fn main() {
                 println!("{}", last_guard_id);
             }
             (Action::FallsAsleep, Action::WakesUp) => {
-                //let mut mins: Vec<u8> = (event.date.minute..next_event.date.minute + 1).collect();
                 for minute in event.date.minute..next_event.date.minute {
                     *total_asleep.entry(last_guard_id).or_insert(0) += 1;
                     *asleep
