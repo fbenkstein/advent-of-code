@@ -5,3 +5,4 @@
 30 players; last marble is worth 5807 points
 432 players; last marble is worth 71019 points
 432 players; last marble is worth 7101900 points
+432 players; last marble is worth 71019000 points
