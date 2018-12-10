@@ -5,7 +5,7 @@ use crate::parser::LightPoint;
 use std::fs::File;
 use std::io::prelude::*;
 
-fn find_neighbors(light_points: &Vec<LightPoint>) -> bool {
+fn all_points_have_neighbors(light_points: &Vec<LightPoint>) -> bool {
     for point in light_points.iter() {
         if !point.has_neighbor(&light_points) {
             return false;
@@ -48,7 +48,7 @@ fn main() {
     loop {
         light_points.iter_mut().for_each(|p| p.translate());
 
-        if find_neighbors(&light_points) {
+        if all_points_have_neighbors(&light_points) {
             println!("Frame #{} looks good!", frame);
             print(&light_points);
             return;
