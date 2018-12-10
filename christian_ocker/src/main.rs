@@ -1,7 +1,7 @@
 mod day1;
+mod day10;
 mod day2;
 mod day3;
-mod day4;
 mod day5;
 mod day6;
 
@@ -31,6 +31,7 @@ fn main() -> std::io::Result<()> {
         3 => println!("{:?}", day3::solve(&input)),
         5 => println!("{:?}", day5::solve(&input)),
         6 => println!("{:?}", day6::solve(&input)),
+        10 => println!("{:?}", day10::solve(&input)),
         _ => eprintln!("invalid day: {}", day),
     }
     Ok(())
