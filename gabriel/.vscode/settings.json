@@ -1,0 +1,4 @@
+{
+    "rust-client.channel": "stable",
+    "python.pythonPath": "/usr/bin/python3",
+}
