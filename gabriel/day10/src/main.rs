@@ -25,11 +25,11 @@ fn print(points: &Vec<LightPoint>) {
     let offset_y = if min_y < 0 { min_y.abs() + 1 } else { -min_y };
     let height = (max_y + offset_y) as usize;
 
-    let mut buffer = vec![vec!['-'; width + 1]; height + 1];
+    let mut buffer = vec![vec![" "; width + 1]; height + 1];
     for point in points.iter() {
         let x = (point.x + offset_x) as usize;
         let y = (point.y + offset_y) as usize;
-        buffer[y][x] = '*';
+        buffer[y][x] = "✸";
     }
     for line in buffer.iter() {
         println!("{}", line.iter().cloned().collect::<String>());
