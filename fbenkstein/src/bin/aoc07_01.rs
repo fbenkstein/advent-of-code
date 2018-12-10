@@ -4,8 +4,6 @@ extern crate itertools;
 
 use std::collections::{HashMap, HashSet};
 
-use itertools::Itertools;
-
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 struct Node(char);
 
@@ -30,7 +28,7 @@ fn main() {
     let mut output = String::new();
 
     while !edges.is_empty() {
-        let roots: Vec<_> = edges
+        let smallest_root = edges
             .keys()
             .filter(|from_node| {
                 edges
@@ -38,11 +36,11 @@ fn main() {
                     .map(|to_nodes| !to_nodes.contains(from_node))
                     .all(|b| b)
             })
+            .min()
             .cloned()
-            .sorted();
-        assert!(!roots.is_empty(), "cycle detected");
-        edges.retain(|to_node, _| !roots.contains(to_node));
-        output.extend(roots.into_iter().map(|Node(c)| c));
+            .expect("no roots! cycles?");
+        edges.remove(&smallest_root);
+        output.push(smallest_root.0);
     }
 
     println!("{}", output);
