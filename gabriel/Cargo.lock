@@ -8,6 +8,13 @@ name = "day1"
 version = "0.1.0"
 
 [[package]]
+name = "day10"
+version = "0.1.0"
+dependencies = [
+ "nom 4.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "day2"
 version = "0.1.0"
 
