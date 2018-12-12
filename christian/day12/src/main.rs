@@ -27,7 +27,7 @@ fn parse(input: &Vec<String>) -> Input {
 }
 
 fn solve(input: &Input, max_iter: usize, num_iter: usize) {
-    let mut state = vec![false; max_iter * 4];
+    let mut state = vec![false; max_iter * 2];
     state.extend(input.initial.iter());
     state.extend(vec![false; max_iter * 2]);
 
