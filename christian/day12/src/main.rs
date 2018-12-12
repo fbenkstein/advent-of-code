@@ -28,28 +28,13 @@ fn parse(input: &Vec<String>) -> Input {
     }
 }
 
-fn print(state: &Vec<bool>) -> Option<()> {
-    let start = state.iter().position(|p| *p)?;
-    let end = state.iter().rev().position(|p| *p)?;
-    for x in state[start..state.len() - end].iter() {
-        if *x {
-            print!("#");
-        } else {
-            print!(".");
-        }
-    }
-    println!("");
-    Some(())
-}
-
 fn solve(input: &Input, max_iter: usize, num_iter: usize) {
     let mut state = vec![false; max_iter * 2];
     state.extend(input.initial.iter());
     state.extend(vec![false; max_iter * 2]);
 
-    let mut lookup: HashMap<Vec<bool>, (usize, usize)> = HashMap::new();
+    let mut lookup: HashMap<Vec<bool>, usize> = HashMap::new();
     let mut offset: isize = 0;
-    print(&state);
     for iter in 0..max_iter {
         let mut next_state = vec![false; state.len()];
         for rule in input.rules.iter() {
@@ -62,29 +47,17 @@ fn solve(input: &Input, max_iter: usize, num_iter: usize) {
         state = next_state;
         let first = state.iter().position(|x| *x).unwrap();
         let last = state.len() - state.iter().rev().position(|x| *x).unwrap();
-        if let Some((prev_iter, prev_first)) =
-            lookup.insert(state[first..=last].into(), (iter, first))
-        {
-            println!(
-                "Found loop {} -> {}, offset {} -> {}",
-                prev_iter, iter, prev_first, first
-            );
+        if let Some(prev_first) = lookup.insert(state[first..=last].into(), first) {
+            println!("Stabilized {}, offset {} -> {}", iter, prev_first, first);
             offset = (num_iter - 1 - iter) as isize * (first as isize - prev_first as isize);
             break;
         }
     }
 
-    let sum: isize = state
-        .iter()
-        .enumerate()
-        .map(|(pos, plant)| {
-            if *plant {
-                pos as isize - (2 * max_iter as isize) + offset
-            } else {
-                0
-            }
-        })
-        .sum();
+    let eval = |(pos, plant): (usize, &bool)| {
+        *plant as isize * (pos as isize - (2 * max_iter as isize) + offset)
+    };
+    let sum: isize = state.iter().enumerate().map(eval).sum();
     println!("Result of {} iterations: {}", num_iter, sum);
 }
 
