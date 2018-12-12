@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate text_io;
-#[macro_use]
-extern crate itertools;
 
 use std::collections::HashMap;
 use std::io::{self, prelude::*};
@@ -29,7 +27,7 @@ fn parse(input: &Vec<String>) -> Input {
 }
 
 fn solve(input: &Input, max_iter: usize, num_iter: usize) {
-    let mut state = vec![false; max_iter * 2];
+    let mut state = vec![false; max_iter * 4];
     state.extend(input.initial.iter());
     state.extend(vec![false; max_iter * 2]);
 
@@ -54,9 +52,7 @@ fn solve(input: &Input, max_iter: usize, num_iter: usize) {
         }
     }
 
-    let eval = |(pos, plant): (usize, &bool)| {
-        *plant as isize * (pos as isize - (2 * max_iter as isize) + offset)
-    };
+    let eval = |(pos, x): (_, &_)| *x as isize * (pos as isize - (2 * max_iter as isize) + offset);
     let sum: isize = state.iter().enumerate().map(eval).sum();
     println!("Result of {} iterations: {}", num_iter, sum);
 }
