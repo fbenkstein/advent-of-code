@@ -5,5 +5,6 @@ authors = ["Gabriel Féron <gabriel.feron@here.com>"]
 edition = "2018"
 
 [dependencies]
+nom = "*"
 text_io = "*"
 pbr = "*"
