@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::collections::HashSet;
+use std::cmp::{Ord, Ordering, PartialOrd};
 
 fn print_tracks(tracks: &[char], carts: &[Cart], width: usize, height: usize) {
     for y in 0..height {
@@ -17,7 +18,7 @@ fn print_tracks(tracks: &[char], carts: &[Cart], width: usize, height: usize) {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct Cart {
     pub x: usize,
     pub y: usize,
@@ -25,7 +26,20 @@ struct Cart {
     pub turns: usize,
 }
 
-#[derive(Debug, Copy, Clone)]
+impl PartialOrd for Cart {
+    fn partial_cmp(&self, other: &Cart) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Cart {
+    fn cmp(&self, other: &Cart) -> Ordering {
+        self.y.cmp(&other.y).then(self.x.cmp(&other.x))
+    }
+}
+
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum Direction {
     Left,
     Right,
@@ -114,9 +128,9 @@ impl Cart {
                     2 => self.state.turn_right(),
                     _ => panic!("wat"),
                 };
-                self.turns +=1;
+                self.turns += 1;
                 new_state
-            },
+            }
             _ => panic!("derailed!!!!"),
         }
     }
@@ -170,18 +184,31 @@ fn main() -> io::Result<()> {
         tracks.extend(rails);
     }
 
-    print_tracks(&tracks, &carts, width, height);
+    // print_tracks(&tracks, &carts, width, height);
 
-    let mut positions: HashSet<(usize, usize)> = HashSet::with_capacity(carts.len());
+    let mut positions: HashMap<(usize, usize), usize> = carts
+        .iter()
+        .enumerate()
+        .map(|(i, cart)| ((cart.x, cart.y), i))
+        .collect();
     loop {
-        positions.clear();
-        for cart in carts.iter_mut() {
+        let mut pos: Vec<usize> = positions.values().cloned().collect();
+        pos.sort_by_key(|&p| &carts[p]);
+
+        for position in pos.into_iter() {
+            let cart = &mut carts[position];
+            positions.remove(&(cart.x, cart.y));
             cart.next(&tracks, width);
-            if !positions.insert((cart.x, cart.y)) {
+            if positions.insert((cart.x, cart.y), position).is_some() {
+                positions.remove(&(cart.x, cart.y));
                 println!("Crash occurred at position: {},{}", cart.x, cart.y);
-                return Ok(());
             }
+
         }
-        // print_tracks(&tracks, &carts, width, height);
+        if positions.len() > 1 {
+            print_tracks(&tracks, &carts, width, height);
+            println!("Only one cart remains! {:#?}", carts[*positions.values().next().unwrap()]);
+            return Ok(());
+        }
     }
 }
