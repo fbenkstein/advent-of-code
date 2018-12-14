@@ -1,0 +1,11 @@
+[package]
+name = "day14"
+version = "0.1.0"
+authors = ["Christian Vetter <veaac.fdirct@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+itertools = "0.7.11"
+text_io = "0.1.7"
+revord = "0.0.2"
+cgmath = "0.16.1"
