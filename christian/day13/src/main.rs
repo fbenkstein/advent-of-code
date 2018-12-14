@@ -81,6 +81,58 @@ fn parse(input: &Vec<String>) -> Input {
     Input { tracks, carts }
 }
 
+impl Cart {
+    fn step(&mut self) {
+        match self.dir {
+            Direction::Up => self.y -= 1,
+            Direction::Down => self.y += 1,
+            Direction::Left => self.x -= 1,
+            Direction::Right => self.x += 1,
+        }
+    }
+    fn choose(&mut self) {
+        self.state = match self.state {
+            State::Left => {
+                self.dir = match self.dir {
+                    Direction::Up => Direction::Left,
+                    Direction::Down => Direction::Right,
+                    Direction::Left => Direction::Down,
+                    Direction::Right => Direction::Up,
+                };
+                State::Straight
+            }
+            State::Straight => State::Right,
+            State::Right => {
+                self.dir = match self.dir {
+                    Direction::Up => Direction::Right,
+                    Direction::Down => Direction::Left,
+                    Direction::Left => Direction::Up,
+                    Direction::Right => Direction::Down,
+                };
+                State::Left
+            }
+        };
+    }
+
+    fn diagonal_up(&mut self) {
+        self.dir = match self.dir {
+            Direction::Up => Direction::Right,
+            Direction::Down => Direction::Left,
+            Direction::Left => Direction::Down,
+            Direction::Right => Direction::Up,
+        };
+    }
+
+    fn diagonal_down(&mut self) {
+        self.dir = match self.dir {
+            Direction::Up => Direction::Left,
+            Direction::Down => Direction::Right,
+            Direction::Left => Direction::Up,
+            Direction::Right => Direction::Down,
+        };
+    }
+}
+
 fn solve(input: &Input, first_crash: bool) {
     let mut carts: Vec<_> = input.carts.iter().cloned().collect();
     carts.sort();
@@ -96,12 +148,7 @@ fn solve(input: &Input, first_crash: bool) {
                 _ => continue,
             }
             occupied[cart.y][cart.x] = None;
-            match cart.dir {
-                Direction::Up => cart.y -= 1,
-                Direction::Down => cart.y += 1,
-                Direction::Left => cart.x -= 1,
-                Direction::Right => cart.x += 1,
-            }
+            cart.step();
             if let Some(_) = occupied[cart.y][cart.x] {
                 if first_crash {
                     println!("First crash @ ({},{})", cart.x, cart.y);
@@ -113,45 +160,9 @@ fn solve(input: &Input, first_crash: bool) {
             occupied[cart.y][cart.x] = Some(cart.id);
 
             match &input.tracks[cart.y][cart.x] {
-                Field::DiagonalUp => {
-                    cart.dir = match cart.dir {
-                        Direction::Up => Direction::Right,
-                        Direction::Down => Direction::Left,
-                        Direction::Left => Direction::Down,
-                        Direction::Right => Direction::Up,
-                    };
-                }
-                Field::DiagonalDown => {
-                    cart.dir = match cart.dir {
-                        Direction::Up => Direction::Left,
-                        Direction::Down => Direction::Right,
-                        Direction::Left => Direction::Up,
-                        Direction::Right => Direction::Down,
-                    };
-                }
-                Field::Intersection => {
-                    cart.state = match cart.state {
-                        State::Left => {
-                            cart.dir = match cart.dir {
-                                Direction::Up => Direction::Left,
-                                Direction::Down => Direction::Right,
-                                Direction::Left => Direction::Down,
-                                Direction::Right => Direction::Up,
-                            };
-                            State::Straight
-                        }
-                        State::Straight => State::Right,
-                        State::Right => {
-                            cart.dir = match cart.dir {
-                                Direction::Up => Direction::Right,
-                                Direction::Down => Direction::Left,
-                                Direction::Left => Direction::Up,
-                                Direction::Right => Direction::Down,
-                            };
-                            State::Left
-                        }
-                    };
-                }
+                Field::DiagonalUp => cart.diagonal_up(),
+                Field::DiagonalDown => cart.diagonal_down(),
+                Field::Intersection => cart.choose(),
                 _ => {}
             }
         }
