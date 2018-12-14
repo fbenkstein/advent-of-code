@@ -48,6 +48,18 @@ impl HotChocolateFactory {
             .map(|i| i.to_string())
             .collect::<String>()
     }
+
+    fn gniniart_sevle(&mut self, recipes: &[u8]) -> usize {
+        loop {
+            self.next_recipe();
+            if self.recipes.len() > recipes.len() {
+                if self.recipes[self.recipes.len() - recipes.len()..self.recipes.len()] == *recipes
+                {
+                    return self.recipes.len() - recipes.len();
+                }
+            }
+        }
+    }
 }
 
 impl fmt::Display for HotChocolateFactory {
@@ -74,6 +86,8 @@ impl fmt::Display for HotChocolateFactory {
 fn main() {
     let mut factory = HotChocolateFactory::default();
     println!("{}", factory.elves_training(030121));
+    let mut factory = HotChocolateFactory::default();
+    println!("{}", factory.gniniart_sevle(&[0, 3, 0, 1, 2, 1]))
 }
 
 #[test]
@@ -116,4 +130,19 @@ fn training_test() {
 
     let mut factory = HotChocolateFactory::default();
     assert_eq!(factory.elves_training(2018), "5941429882");
+}
+
+#[test]
+fn backwards_training_test() {
+    let mut factory = HotChocolateFactory::default();
+    assert_eq!(factory.gniniart_sevle(&[5, 1, 5, 8, 9]), 9);
+
+    let mut factory = HotChocolateFactory::default();
+    assert_eq!(factory.gniniart_sevle(&[0, 1, 2, 4, 5]), 5);
+
+    let mut factory = HotChocolateFactory::default();
+    assert_eq!(factory.gniniart_sevle(&[9, 2, 5, 1, 0]), 18);
+
+    let mut factory = HotChocolateFactory::default();
+    assert_eq!(factory.gniniart_sevle(&[5, 9, 4, 1, 4]), 2018);
 }
