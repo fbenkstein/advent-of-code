@@ -19,7 +19,8 @@ impl HotChocolateFactory {
     pub fn next_recipe(&mut self) {
         let combined_recipe =
             self.recipes[self.current_recipes.0] + self.recipes[self.current_recipes.1];
-        self.recipes.extend(Self::digits_to_vec(combined_recipe));
+        self.recipes
+            .extend(Self::digits_to_vec(&combined_recipe.to_string()));
         let next_current_recipe = |&e| (e + 1 + self.recipes[e] as usize) % self.recipes.len();
         self.current_recipes = (
             next_current_recipe(&self.current_recipes.0),
@@ -27,16 +28,8 @@ impl HotChocolateFactory {
         );
     }
 
-    fn digits_to_vec(n: u8) -> Vec<u8> {
-        let mut digits = Vec::new();
-        let mut n = n;
-        while n > 9 {
-            digits.push(n % 10);
-            n = n / 10;
-        }
-        digits.push(n);
-        digits.reverse();
-        digits
+    fn digits_to_vec(n: &str) -> Vec<u8> {
+        n.chars().map(|c| c.to_digit(10).unwrap() as u8).collect()
     }
 
     fn elves_training(&mut self, train_for: usize) -> String {
@@ -49,14 +42,16 @@ impl HotChocolateFactory {
             .collect::<String>()
     }
 
-    fn gniniart_sevle(&mut self, recipes: &[u8]) -> usize {
+    fn gniniart_sevle(&mut self, recipes: &str) -> usize {
+        let recipes = Self::digits_to_vec(recipes);
+        let mut recipes_position = 0;
         loop {
             self.next_recipe();
-            if self.recipes.len() > recipes.len() {
-                if self.recipes[self.recipes.len() - recipes.len()..self.recipes.len()] == *recipes
-                {
-                    return self.recipes.len() - recipes.len();
+            while recipes_position + recipes.len() <= self.recipes.len() {
+                if &self.recipes[recipes_position..recipes_position + recipes.len()] == &recipes[..] {
+                    return recipes_position;
                 }
+                recipes_position += 1;
             }
         }
     }
@@ -86,8 +81,9 @@ impl fmt::Display for HotChocolateFactory {
 fn main() {
     let mut factory = HotChocolateFactory::default();
     println!("{}", factory.elves_training(030121));
+
     let mut factory = HotChocolateFactory::default();
-    println!("{}", factory.gniniart_sevle(&[0, 3, 0, 1, 2, 1]))
+    println!("{}", factory.gniniart_sevle("030121"))
 }
 
 #[test]
@@ -118,6 +114,18 @@ fn example_test() {
 }
 
 #[test]
+fn parser_test() {
+    assert_eq!(
+        HotChocolateFactory::digits_to_vec("51589"),
+        &[5, 1, 5, 8, 9]
+    );
+    assert_eq!(
+        HotChocolateFactory::digits_to_vec("012450"),
+        &[0, 1, 2, 4, 5, 0]
+    );
+}
+
+#[test]
 fn training_test() {
     let mut factory = HotChocolateFactory::default();
     assert_eq!(factory.elves_training(5), "0124515891");
@@ -135,14 +143,14 @@ fn training_test() {
 #[test]
 fn backwards_training_test() {
     let mut factory = HotChocolateFactory::default();
-    assert_eq!(factory.gniniart_sevle(&[5, 1, 5, 8, 9]), 9);
+    assert_eq!(factory.gniniart_sevle("51589"), 9);
 
     let mut factory = HotChocolateFactory::default();
-    assert_eq!(factory.gniniart_sevle(&[0, 1, 2, 4, 5]), 5);
+    assert_eq!(factory.gniniart_sevle("01245"), 5);
 
     let mut factory = HotChocolateFactory::default();
-    assert_eq!(factory.gniniart_sevle(&[9, 2, 5, 1, 0]), 18);
+    assert_eq!(factory.gniniart_sevle("92510"), 18);
 
     let mut factory = HotChocolateFactory::default();
-    assert_eq!(factory.gniniart_sevle(&[5, 9, 4, 1, 4]), 2018);
+    assert_eq!(factory.gniniart_sevle("59414"), 2018);
 }
