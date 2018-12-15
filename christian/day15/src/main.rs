@@ -33,12 +33,12 @@ struct Unit {
 }
 
 #[derive(Debug)]
-struct Input {
+struct Cave {
     data: Vec<Field>,
     width: usize,
 }
 
-fn parse(input: &Vec<String>, att_elves: usize) -> Input {
+fn parse(input: &Vec<String>, att_elves: usize) -> Cave {
     let mut data = Vec::new();
     for (y, line) in input.iter().enumerate() {
         for (x, c) in line.bytes().enumerate() {
@@ -57,11 +57,11 @@ fn parse(input: &Vec<String>, att_elves: usize) -> Input {
                     att: att_elves,
                     hp: 200,
                 }),
-                _ => panic!("Input kaputt"),
+                _ => panic!("Cave kaputt"),
             })
         }
     }
-    Input {
+    Cave {
         data,
         width: input[0].bytes().len(),
     }
@@ -76,7 +76,7 @@ impl P {
     }
 }
 
-impl Input {
+impl Cave {
     fn to_pos(&self, pos: P) -> usize {
         pos.x + pos.y * self.width
     }
@@ -102,14 +102,11 @@ impl Input {
     }
 
     fn order<'a>(&'a self) -> impl Iterator<Item = P> + 'a {
-        let positions = move |(pos, x): (usize, &Field)| match x {
-            Field::Unit(_) => Some(P {
-                y: pos / self.width,
-                x: pos % self.width,
-            }),
+        let positions = move |x: &Field| match x {
+            Field::Unit(unit) => Some(unit.pos),
             _ => None,
         };
-        self.data.iter().enumerate().filter_map(positions)
+        self.data.iter().filter_map(positions)
     }
 
     fn step(&self, unit: &Unit) -> P {
@@ -146,26 +143,22 @@ impl Input {
         // println!("{:?} wants to go {:?}", unit, best_pos);
 
         // how to get there?
-        q.clear();
-        q_pos = 0;
         candidates.clear();
-        q.push(best_pos);
         dist[self.to_pos(best_pos)] *= -1;
-        while q_pos < q.len() {
-            let next = q[q_pos];
-            let next_dist = -dist[self.to_pos(next)];
-            if next_dist == 1 {
+        for next in q.iter().rev().cloned() {
+            let next_dist = dist[self.to_pos(next)];
+            if next_dist > 0 {
+                continue;
+            }
+            if next_dist == -1 {
                 candidates.push(next);
-                q_pos += 1;
                 continue;
             }
             for target in next.neighbours() {
-                if dist[self.to_pos(target)] == next_dist - 1 {
+                if dist[self.to_pos(target)] == -next_dist - 1 {
                     dist[self.to_pos(target)] *= -1;
-                    q.push(target);
                 }
             }
-            q_pos += 1;
         }
 
         let result = *candidates.iter().min().unwrap_or(&unit.pos);
@@ -209,7 +202,7 @@ impl Input {
     }
 }
 
-fn solve(mut input: Input, print: bool) -> usize {
+fn solve(mut input: Cave, print: bool) -> usize {
     let mut positions = BTreeSet::new();
     let mut iter = 0;
     if print {
