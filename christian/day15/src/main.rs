@@ -38,7 +38,7 @@ struct Input {
     width: usize,
 }
 
-fn parse(input: &Vec<String>) -> Input {
+fn parse(input: &Vec<String>, att_elves: usize) -> Input {
     let mut data = Vec::new();
     for (y, line) in input.iter().enumerate() {
         for (x, c) in line.bytes().enumerate() {
@@ -54,7 +54,7 @@ fn parse(input: &Vec<String>) -> Input {
                 b'E' => Field::Unit(Unit {
                     pos: P { y, x },
                     class: Class::Elf,
-                    att: 3,
+                    att: att_elves,
                     hp: 200,
                 }),
                 _ => panic!("Input kaputt"),
@@ -209,12 +209,15 @@ impl Input {
     }
 }
 
-fn solve(mut input: Input) {
+fn solve(mut input: Input, print: bool) -> usize {
     let mut positions = BTreeSet::new();
     let mut iter = 0;
-    println!("Iteration {}", iter);
-    input.print();
+    if print {
+        println!("Iteration {}", iter);
+        input.print();
+    }
     let mut full_round = true;
+    let mut num_elves_died = 0;
     while !input.done() {
         for x in input.order() {
             positions.insert(x);
@@ -240,6 +243,9 @@ fn solve(mut input: Input) {
                 if enemy.hp == 0 {
                     positions.remove(&enemy_pos);
                     *input.field_mut(enemy_pos) = Field::Empty;
+                    if let Class::Elf = enemy.class {
+                        num_elves_died += 1;
+                    }
                 } else {
                     *input.field_mut(enemy_pos) = Field::Unit(enemy);
                 }
@@ -251,13 +257,15 @@ fn solve(mut input: Input) {
                 full_round = false;
             }
         }
-        println!("");
         if full_round {
             iter += 1;
         }
 
-        println!("Iteration {}", iter);
-        input.print();
+        if print {
+            println!("");
+            println!("Iteration {}", iter);
+            input.print();
+        }
     }
 
     let score: usize = input
@@ -270,11 +278,20 @@ fn solve(mut input: Input) {
 
     println!("Done after {} iterations with {} hp left", iter, score);
     println!("Checksum: {}", score * iter);
+
+    num_elves_died
 }
 
 fn main() {
     let stdin = io::stdin();
     let lines: Vec<_> = stdin.lock().lines().map(|x| x.unwrap()).collect();
-    let input = parse(&lines);
-    solve(input);
+    let mut attack_power = 3;
+    loop {
+        println!("Try attack power {}", attack_power);
+        let input = parse(&lines, attack_power);
+        if solve(input, false) == 0 {
+            break;
+        }
+        attack_power += 1;
+    }
 }
