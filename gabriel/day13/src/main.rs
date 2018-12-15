@@ -1,9 +1,9 @@
+use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::cmp::{Ord, Ordering, PartialOrd};
 
 fn print_tracks(tracks: &[char], carts: &[Cart], width: usize, height: usize) {
     for y in 0..height {
@@ -37,7 +37,6 @@ impl Ord for Cart {
         self.y.cmp(&other.y).then(self.x.cmp(&other.x))
     }
 }
-
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum Direction {
@@ -150,7 +149,7 @@ fn main() -> io::Result<()> {
         .expect("no max?!");
 
     let mut tracks = Vec::with_capacity(height);
-    let mut carts: Vec<Cart> = vec![];
+    let mut carts: Vec<Cart> = Vec::new();
 
     for (y, line) in contents.lines().enumerate() {
         let mut rails = Vec::with_capacity(width);
@@ -184,30 +183,23 @@ fn main() -> io::Result<()> {
         tracks.extend(rails);
     }
 
-    // print_tracks(&tracks, &carts, width, height);
-
-    let mut positions: HashMap<(usize, usize), usize> = carts
-        .iter()
-        .enumerate()
-        .map(|(i, cart)| ((cart.x, cart.y), i))
-        .collect();
+    let mut visited_carts: HashMap<(usize, usize), usize> = HashMap::new();
     loop {
-        let mut pos: Vec<usize> = positions.values().cloned().collect();
-        pos.sort_by_key(|&p| &carts[p]);
-
-        for position in pos.into_iter() {
-            let cart = &mut carts[position];
-            positions.remove(&(cart.x, cart.y));
+        visited_carts.clear();
+        for (idx, cart) in carts.iter_mut().enumerate() {
             cart.next(&tracks, width);
-            if positions.insert((cart.x, cart.y), position).is_some() {
-                positions.remove(&(cart.x, cart.y));
-                println!("Crash occurred at position: {},{}", cart.x, cart.y);
+            if visited_carts.insert((cart.x, cart.y), idx).is_some() {
+                println!(
+                    "Crash occurred at position {},{} - sending carts to maintenance.",
+                    cart.x, cart.y
+                );
+                visited_carts.remove(&(cart.x, cart.y));
             }
-
         }
-        if positions.len() > 1 {
+        carts.retain(|cart| visited_carts.contains_key(&(cart.x, cart.y)));
+        if carts.len() == 1 {
             print_tracks(&tracks, &carts, width, height);
-            println!("Only one cart remains! {:#?}", carts[*positions.values().next().unwrap()]);
+            println!("Only one cart remains! {:#?}", carts.first().unwrap());
             return Ok(());
         }
     }
