@@ -6,15 +6,19 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::str::FromStr;
 
+use env_logger;
+
 fn main() {
-    let mut file = File::open("input.txt").expect("file not found");
+    env_logger::init();
+
+    let mut file = File::open("input3.txt").expect("file not found");
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .expect("could not read file");
-    let board = Board::from_str(&contents).expect("could not parse board.");
-    println!("{}", board);
+    let mut board = Board::from_str(&contents).expect("could not parse board.");
 
-    // 1. scan for targets on board
-    // 2. find all open squares that are reachable by an enemy
-    // 3.
+    for _ in 0..3 {
+        board.next_turn();
+        println!("{}", board);
+    }
 }
