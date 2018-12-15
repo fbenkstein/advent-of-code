@@ -1,3 +1,5 @@
+use std::cmp::{Ord, Ordering, PartialOrd};
+use std::collections::BTreeSet;
 use std::fmt;
 use std::str::FromStr;
 
@@ -16,7 +18,7 @@ impl fmt::Display for Tile {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum Class {
     Goblin,
     Elf,
@@ -31,11 +33,23 @@ impl fmt::Display for Class {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 struct Unit {
     pub class: Class,
     x: usize,
     y: usize,
+}
+
+impl PartialOrd for Unit {
+    fn partial_cmp(&self, other: &Unit) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Unit {
+    fn cmp(&self, other: &Unit) -> Ordering {
+        self.y.cmp(&other.y).then(self.x.cmp(&other.x))
+    }
 }
 
 #[derive(Debug)]
@@ -43,7 +57,7 @@ pub struct Board {
     tiles: Vec<Tile>,
     width: usize,
     height: usize,
-    units: Vec<Unit>,
+    units: BTreeSet<Unit>,
 }
 
 impl FromStr for Board {
@@ -56,13 +70,13 @@ impl FromStr for Board {
             .max()
             .expect("no max?!");
         let mut tiles = Vec::with_capacity(width * height);
-        let mut units = vec![];
+        let mut units = BTreeSet::new();
 
         for (y, line) in contents.lines().enumerate() {
             for (x, tile) in line.chars().enumerate() {
                 match tile {
                     'E' => {
-                        units.push(Unit {
+                        units.insert(Unit {
                             class: Class::Elf,
                             x: x,
                             y: y,
@@ -70,7 +84,7 @@ impl FromStr for Board {
                         tiles.push(Tile::Open);
                     }
                     'G' => {
-                        units.push(Unit {
+                        units.insert(Unit {
                             class: Class::Goblin,
                             x: x,
                             y: y,
@@ -111,5 +125,35 @@ impl fmt::Display for Board {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ordering() {
+        let board = Board::from_str(
+            r#"
+#######
+#.G.E.#
+#E.G.E#
+#.G.E.#
+#######"#,
+        )
+        .expect("could not parse board.");
+        assert_eq!(
+            board.units.iter().map(|u| u.class).collect::<Vec<Class>>(),
+            &[
+                Class::Goblin,
+                Class::Elf,
+                Class::Elf,
+                Class::Goblin,
+                Class::Elf,
+                Class::Goblin,
+                Class::Elf
+            ]
+        );
     }
 }

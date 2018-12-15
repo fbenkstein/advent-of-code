@@ -13,4 +13,8 @@ fn main() {
         .expect("could not read file");
     let board = Board::from_str(&contents).expect("could not parse board.");
     println!("{}", board);
+
+    // 1. scan for targets on board
+    // 2. find all open squares that are reachable by an enemy
+    // 3.
 }
