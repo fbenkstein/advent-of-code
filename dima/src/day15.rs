@@ -57,12 +57,13 @@ struct Npc {
     pos: (usize, usize),
     hit_points: i32,
     race: Race,
+    power: i32,
 }
 
 type Position = (usize, usize);
 
 impl Npc {
-    const ATTACK_POWER: i32 = 3;
+    const DEFAULT_ATTACK_POWER: i32 = 3;
     const INITIAL_HIT_POINTS: i32 = 200;
 
     fn is_alive(&self) -> bool {
@@ -117,8 +118,9 @@ impl Game {
 
     fn attack(&mut self, idx: usize) -> bool {
         if let Some(target_idx) = self.in_range_of_target(&self.npcs[idx]) {
+            let attack_power = self.npcs[idx].power;
             let target_npc = &mut self.npcs[target_idx];
-            target_npc.hit(Npc::ATTACK_POWER);
+            target_npc.hit(attack_power);
             if !target_npc.is_alive() {
                 self.map[target_npc.pos] = Field::Open;
             }
@@ -219,11 +221,6 @@ impl Game {
         };
 
         // move
-        println!(
-            "Move {},{} -> {},{}",
-            self.npcs[idx].pos.1, self.npcs[idx].pos.0, move_to_pos.1, move_to_pos.0
-        );
-
         self.map[npc_pos] = Field::Open;
         self.map[move_to_pos] = Field::Npc(idx);
         self.npcs[idx].pos = move_to_pos;
@@ -239,7 +236,7 @@ impl Game {
         npcs
     }
 
-    fn run(&mut self) -> (usize, usize) {
+    fn run(&mut self) -> usize {
         // println!("{}", self);
         let mut num_rounds = 0;
         while self.round() {
@@ -255,7 +252,36 @@ impl Game {
             .map(|npc| npc.hit_points as usize)
             .sum::<usize>();
 
-        (num_rounds, hit_points)
+        num_rounds * hit_points
+    }
+
+    // None, if any elf dies, otherwise the score
+    fn run_until_elf_dies(&mut self, elven_power: i32) -> Option<usize> {
+        // Upgrade elves
+        for elf in self.npcs.iter_mut().filter(|npc| npc.race == Race::Elf) {
+            elf.power = elven_power;
+        }
+
+        let mut num_rounds = 0;
+        while self.round() {
+            if self
+                .npcs
+                .iter()
+                .any(|npc| !npc.is_alive() && npc.race == Race::Elf)
+            {
+                return None;
+            }
+            num_rounds += 1;
+        }
+
+        let hit_points = self
+            .npcs
+            .iter()
+            .filter(|npc| npc.is_alive())
+            .map(|npc| npc.hit_points as usize)
+            .sum::<usize>();
+
+        Some(num_rounds * hit_points)
     }
 }
 
@@ -278,6 +304,7 @@ impl From<&str> for Game {
                             pos: (x, y),
                             hit_points: Npc::INITIAL_HIT_POINTS,
                             race: Race::Elf,
+                            power: Npc::DEFAULT_ATTACK_POWER,
                         });
                         field
                     }
@@ -287,6 +314,7 @@ impl From<&str> for Game {
                             pos: (x, y),
                             hit_points: Npc::INITIAL_HIT_POINTS,
                             race: Race::Goblin,
+                            power: Npc::DEFAULT_ATTACK_POWER,
                         });
                         field
                     }
@@ -345,18 +373,20 @@ impl fmt::Display for Game {
     }
 }
 
-// Guesses: 208704
-// Guesses: 95*2174 = 206530
-//
-// 94
-// 2194
-// part 1: 206236
-
 pub fn solve(input: &str) -> (usize, usize) {
     let mut game = Game::from(input);
-    let res = game.run();
-    println!("{}", res.0 * res.1);
-    res
+    let part_1 = game.run();
+
+    let mut min_elven_power = 4;
+    let min_power_score = loop {
+        let mut game = Game::from(input);
+        if let Some(score) = game.run_until_elf_dies(min_elven_power) {
+            break score;
+        }
+        min_elven_power += 1;
+    };
+
+    (part_1, min_power_score)
 }
 
 #[cfg(test)]
@@ -574,7 +604,7 @@ mod tests {
 #######
 "#
             );
-            assert_eq!(score, (47, 590));
+            assert_eq!(score, 47 * 590);
         }
 
         #[test]
@@ -601,7 +631,7 @@ mod tests {
 #######
 "#
             );
-            assert_eq!(score, (37, 982));
+            assert_eq!(score, 37 * 982);
         }
 
         #[test]
@@ -628,7 +658,7 @@ mod tests {
 #######
 "#
             );
-            assert_eq!(score, (46, 859));
+            assert_eq!(score, 46 * 859);
         }
 
         #[test]
@@ -655,7 +685,7 @@ mod tests {
 #######
 "#,
             );
-            assert_eq!(score, (35, 793));
+            assert_eq!(score, 35 * 793);
         }
 
         #[test]
@@ -682,7 +712,7 @@ mod tests {
 #######
 "#,
             );
-            assert_eq!(score, (54, 536));
+            assert_eq!(score, 54 * 536);
         }
 
         #[test]
@@ -713,7 +743,7 @@ mod tests {
 #########
 "#,
             );
-            assert_eq!(score, (20, 937));
+            assert_eq!(score, 20 * 937);
         }
 
         #[test]
