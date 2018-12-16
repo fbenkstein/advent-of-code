@@ -90,15 +90,8 @@ struct Game {
 }
 
 impl Game {
-    fn do_turn(&mut self) -> bool {
+    fn round(&mut self) -> bool {
         let npcs = self.alive_npcs_in_order();
-
-        let all_elves = npcs.iter().all(|&idx| self.npcs[idx].race == Race::Elf);
-        let all_goblins = npcs.iter().all(|&idx| self.npcs[idx].race == Race::Goblin);
-        if all_elves || all_goblins {
-            return false;
-        }
-
         for &idx in &npcs {
             if self.npcs[idx].is_alive() {
                 let race = self.npcs[idx].race;
@@ -107,25 +100,31 @@ impl Game {
                     .iter()
                     .any(|npc| npc.is_alive() && npc.race != race);
                 if !any_enemy_alive {
-                    self.remove_dead_bodies();
                     return false;
                 }
                 self.do_npc_turn(idx);
             }
         }
-
-        self.remove_dead_bodies();
         true
     }
 
     fn do_npc_turn(&mut self, idx: usize) {
-        if let Some(target_idx) = self.in_range_of_target(&self.npcs[idx]) {
-            self.npcs[target_idx].hit(Npc::ATTACK_POWER);
-        } else {
+        if !self.attack(idx) {
             self.do_npc_move(idx);
-            if let Some(target_idx) = self.in_range_of_target(&self.npcs[idx]) {
-                self.npcs[target_idx].hit(Npc::ATTACK_POWER);
+            self.attack(idx);
+        }
+    }
+
+    fn attack(&mut self, idx: usize) -> bool {
+        if let Some(target_idx) = self.in_range_of_target(&self.npcs[idx]) {
+            let target_npc = &mut self.npcs[target_idx];
+            target_npc.hit(Npc::ATTACK_POWER);
+            if !target_npc.is_alive() {
+                self.map[target_npc.pos] = Field::Open;
             }
+            true
+        } else {
+            false
         }
     }
 
@@ -187,7 +186,7 @@ impl Game {
         let chosen = reachable.min_by_key(|pos| (distances[pos], pos.1, pos.0));
         let chosen = match chosen {
             Some(pos) => pos,
-            None => return true, // nowhere to go
+            None => return true, // nowhere to move
         };
 
         // BFS from chosen pos to npc
@@ -220,7 +219,10 @@ impl Game {
         };
 
         // move
-        // println!("Move {:?} -> {:?}", npc_pos, move_to_pos);
+        println!(
+            "Move {},{} -> {},{}",
+            self.npcs[idx].pos.1, self.npcs[idx].pos.0, move_to_pos.1, move_to_pos.0
+        );
 
         self.map[npc_pos] = Field::Open;
         self.map[move_to_pos] = Field::Npc(idx);
@@ -238,16 +240,12 @@ impl Game {
     }
 
     fn run(&mut self) -> (usize, usize) {
-        println!("{}", self);
-
+        // println!("{}", self);
         let mut num_rounds = 0;
-        loop {
-            let cont = self.do_turn();
-            println!("{}", self);
-            if !cont {
-                break;
-            }
+        while self.round() {
             num_rounds += 1;
+            // println!("{}", self);
+            // thread::sleep(time::Duration::from_millis(1000));
         }
 
         let hit_points = self
@@ -258,23 +256,6 @@ impl Game {
             .sum::<usize>();
 
         (num_rounds, hit_points)
-    }
-
-    fn remove_dead_bodies(&mut self) {
-        let dead_npcs = self
-            .npcs
-            .iter()
-            .enumerate()
-            .filter(|(_, npc)| !npc.is_alive());
-        for (idx, npc) in dead_npcs {
-            let not_yet_removed = match self.map[npc.pos] {
-                Field::Npc(field_idx) if idx == field_idx => true,
-                _ => false,
-            };
-            if not_yet_removed {
-                self.map[npc.pos] = Field::Open;
-            }
-        }
     }
 }
 
@@ -364,6 +345,13 @@ impl fmt::Display for Game {
     }
 }
 
+// Guesses: 208704
+// Guesses: 95*2174 = 206530
+//
+// 94
+// 2194
+// part 1: 206236
+
 pub fn solve(input: &str) -> (usize, usize) {
     let mut game = Game::from(input);
     let res = game.run();
@@ -423,7 +411,7 @@ mod tests {
             );
 
             // 1 round
-            game.do_turn();
+            game.round();
             println!("Got after turn: {}", format!("{}", game));
 
             assert_eq!(
@@ -439,7 +427,7 @@ mod tests {
             );
 
             // 2 rounds
-            game.do_turn();
+            game.round();
             println!("Got after turn: {}", format!("{}", game));
 
             assert_eq!(
@@ -455,7 +443,7 @@ mod tests {
             );
 
             for _ in 2..23 {
-                game.do_turn();
+                game.round();
             }
             println!("Got after turn 23:\n{}", format!("{}", game));
 
@@ -471,7 +459,7 @@ mod tests {
 "#
             );
 
-            game.do_turn();
+            game.round();
             println!("Got after turn 24:\n{}", format!("{}", game));
 
             assert_eq!(
@@ -486,7 +474,7 @@ mod tests {
 "#
             );
 
-            game.do_turn();
+            game.round();
             println!("Got after turn 25:\n{}", format!("{}", game));
             assert_eq!(
                 format!("{}", game),
@@ -500,7 +488,7 @@ mod tests {
 "#
             );
 
-            game.do_turn();
+            game.round();
             println!("Got after turn 26:\n{}", format!("{}", game));
             assert_eq!(
                 format!("{}", game),
@@ -514,7 +502,7 @@ mod tests {
 "#
             );
 
-            game.do_turn();
+            game.round();
             println!("Got after turn 27:\n{}", format!("{}", game));
             assert_eq!(
                 format!("{}", game),
@@ -528,7 +516,7 @@ mod tests {
 "#
             );
 
-            game.do_turn();
+            game.round();
             println!("Got after turn 28:\n{}", format!("{}", game));
             assert_eq!(
                 format!("{}", game),
@@ -543,7 +531,7 @@ mod tests {
             );
 
             for _ in 28..47 {
-                game.do_turn();
+                game.round();
             }
             println!("Got after turn 47:\n{}", format!("{}", game));
 
@@ -559,7 +547,7 @@ mod tests {
 "#
             );
 
-            assert!(!game.do_turn());
+            assert!(!game.round());
         }
 
         #[test]
@@ -797,7 +785,7 @@ mod tests {
 #########"#,
             );
 
-            game.do_turn();
+            game.round();
             println!("{}", game);
             assert_eq!(
                 format!("{}", game),
@@ -813,7 +801,7 @@ mod tests {
 "#
             );
 
-            game.do_turn();
+            game.round();
             println!("{}", game);
             assert_eq!(
                 format!("{}", game),
@@ -829,7 +817,7 @@ mod tests {
 "#
             );
 
-            game.do_turn();
+            game.round();
             println!("{}", game);
             assert_eq!(
                 format!("{}", game),
