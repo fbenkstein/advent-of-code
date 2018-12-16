@@ -1,5 +1,6 @@
 use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::fmt;
@@ -42,7 +43,7 @@ pub struct Unit {
     pub class: Class,
     x: usize,
     y: usize,
-    hp: usize,
+    hp: isize,
 }
 
 impl PartialOrd for Unit {
@@ -63,6 +64,7 @@ pub struct Board {
     height: usize,
     tiles: Vec<Tile>,
     units: Vec<Unit>,
+    turn: usize,
 }
 
 impl FromStr for Board {
@@ -115,6 +117,7 @@ impl FromStr for Board {
             units: units,
             height: height,
             width: width,
+            turn: 0,
         })
     }
 }
@@ -124,19 +127,21 @@ impl Unit {
         [(x + 1, y), (x, y + 1), (x - 1, y), (x, y - 1)]
     }
 
-    fn has_target_in_range(&self, units: &Vec<Unit>) -> Option<usize> {
+    /// Determines all of the targets that are in range of it by being immediately adjacent to it
+    /// then gets the one that has the fewest hit points (hp) and first in readability order
+    fn has_target_in_range(&self, units: &Vec<Unit>) -> Option<(usize, Unit)> {
         let adjacent_tiles: Vec<(usize, usize)> = Unit::points_around(self.x, self.y).to_vec();
         units
             .iter()
             .enumerate()
             .filter_map(|(i, &u)| {
                 if adjacent_tiles.contains(&(u.x, u.y)) && u.class != self.class {
-                    return Some(i);
+                    return Some((i, u.clone()));
                 } else {
                     None
                 }
             })
-            .next()
+            .min_by_key(|(_, u)| (u.hp, u.y, u.x))
     }
 }
 
@@ -156,32 +161,78 @@ impl fmt::Display for Board {
                     write!(f, "{}", self.tiles[x + y * self.width])?;
                 }
             }
+            let units: BTreeSet<&Unit> = self.units.iter().filter(|u| u.y == y).collect();
+            for unit in units {
+                write!(f, " {}({})", unit.class, unit.hp)?;
+            }
             writeln!(f, "")?;
         }
         Ok(())
     }
 }
 
+#[derive(Debug)]
+pub enum Turn {
+    GameOver,
+    Attacked(usize),
+    Moved,
+    Victory(Class),
+    Error,
+}
+
 impl Board {
-    pub fn next_turn(&mut self) {
+    pub fn next_turn(&mut self) -> Option<isize> {
+        let mut dead_units = vec![];
+        println!("Start round {}:", self.turn + 1);
         for i in 0..self.units.len() {
-            self.choose_turn(i);
+            let last_move = self.choose_turn(i, &dead_units);
+            match last_move {
+                Turn::Attacked(ennemy_idx) => {
+                    let ennemy = self.units.get_mut(ennemy_idx).expect("cannot index ennemy");
+                    ennemy.hp -= 3;
+                    if ennemy.hp <= 0 {
+                        self.units.remove(i);
+                    }
+                }
+                Turn::Victory(class) => {
+                    println!("Victory from {}", class);
+                    return Some(
+                        self.turn as isize * self.units.iter().map(|&u| u.hp).sum::<isize>(),
+                    );
+                }
+                _ => continue,
+            };
         }
+        for dead_unit in dead_units.iter() {
+            self.units.remove(*dead_unit);
+        }
+        self.turn += 1;
+        println!("{}", self);
         self.units.sort();
+        None
     }
 
-    pub fn choose_turn(&mut self, idx: usize) -> Option<usize> {
-        let mut current_units = self.units.clone();
-        let unit = self.units.get_mut(idx).unwrap();
+    /// Choose the step and perform attack if relevant
+    /// returns the index of the ennemy that got killed.
+    pub fn choose_turn(&mut self, idx: usize, dead_units: &Vec<usize>) -> Turn {
+        let mut current_units = self
+            .units
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| !dead_units.contains(i))
+            .map(|(_, &u)| u)
+            .collect();
+        let unit = self.units.get_mut(idx);
+        let unit = unit.unwrap();
         let current_tiles = self.tiles.clone();
         let width = self.width.clone();
 
-        if let Some(unit_idx) = unit.has_target_in_range(&current_units) {
+        if let Some((ennemy_idx, ennemy_unit)) = unit.has_target_in_range(&mut current_units) {
             println!(
-                "{:?} is ready to attack {:?}",
-                unit, current_units[unit_idx]
+                "{:?} is already ready to attack {:?}",
+                unit, current_units[ennemy_idx]
             );
-            return Some(unit_idx);
+            return Turn::Attacked(ennemy_idx);
         }
 
         let find_reachable_tiles = |(x, y)| -> Vec<(usize, usize)> {
@@ -204,6 +255,9 @@ impl Board {
             .flat_map(|unit| find_reachable_tiles((unit.x, unit.y)))
             .collect();
         debug!("In range: {:?}", in_range);
+        if in_range.len() == 0 {
+            return Turn::Victory(unit.class);
+        }
 
         // find all reachable tiles for this unit
         let mut reachable_tiles = HashSet::new();
@@ -260,15 +314,15 @@ impl Board {
             current_units[idx] = *unit;
         }
 
-        if let Some(unit_idx) = unit.has_target_in_range(&current_units) {
+        if let Some((ennemy_idx, _)) = unit.has_target_in_range(&current_units) {
             println!(
                 "{:?} is ready to attack {:?}",
-                unit, current_units[unit_idx]
+                unit, current_units[ennemy_idx]
             );
-            return Some(unit_idx);
+            return Turn::Attacked(ennemy_idx);
         }
 
-        None
+        return Turn::Moved;
     }
 }
 
