@@ -2,7 +2,7 @@
 extern crate enumset;
 
 use enumset::EnumSet;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 use std::io::{self, prelude::*};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Copy)]
@@ -77,31 +77,30 @@ impl P {
 }
 
 impl Cave {
-    fn to_pos(&self, pos: P) -> usize {
+    fn p(&self, pos: P) -> usize {
         pos.x + pos.y * self.width
     }
 
     fn field(&self, pos: P) -> &Field {
-        &self.data[self.to_pos(pos)]
+        &self.data[self.p(pos)]
     }
 
     fn field_mut(&mut self, pos: P) -> &mut Field {
-        let index = self.to_pos(pos);
+        let index = self.p(pos);
         &mut self.data[index]
     }
 
     fn done(&self) -> bool {
-        let sum = self.data.iter().fold(EnumSet::new(), |mut sum, x| {
-            match x {
-                Field::Unit(x) => sum |= x.class,
-                _ => (),
+        let combine = |mut sum, x: &Field| {
+            if let Field::Unit(x) = x {
+                sum |= x.class;
             }
             sum
-        });
-        sum.len() == 1
+        };
+        self.data.iter().fold(EnumSet::new(), combine).len() == 1
     }
 
-    fn order<'a>(&'a self) -> impl Iterator<Item = P> + 'a {
+    fn units<'a>(&'a self) -> impl Iterator<Item = P> + 'a {
         let positions = move |x: &Field| match x {
             Field::Unit(unit) => Some(unit.pos),
             _ => None,
@@ -109,61 +108,44 @@ impl Cave {
         self.data.iter().filter_map(positions)
     }
 
+    fn is_empty(&self, pos: P) -> bool {
+        match self.field(pos) {
+            Field::Empty => true,
+            _ => false,
+        }
+    }
+
+    fn attack_pos<'a>(&'a self, class: Class) -> impl Iterator<Item = P> + 'a {
+        let others = move |x: &Field| match x {
+            Field::Unit(other) if other.class != class => Some(other.pos),
+            _ => None,
+        };
+        let empty = move |x: &P| self.is_empty(*x);
+        let result = self.data.iter().filter_map(others);
+        result.flat_map(P::neighbours).filter(empty)
+    }
+
     fn step(&self, unit: &Unit) -> P {
-        const INF: isize = std::isize::MAX;
-        let mut dist = vec![INF; self.data.len()];
-        dist[self.to_pos(unit.pos)] = 0;
-        let mut q = vec![unit.pos];
-        let mut q_pos = 0;
-        let mut best = INF;
-        let mut candidates = Vec::new();
-        while q_pos < q.len() {
-            let next = q[q_pos];
-            let next_dist = dist[self.to_pos(next)];
-            if next_dist > best {
-                break;
-            }
-            for target in next.neighbours() {
-                match &self.data[self.to_pos(target)] {
-                    Field::Empty if dist[self.to_pos(target)] > next_dist + 1 => {
-                        dist[self.to_pos(target)] = next_dist + 1;
-                        q.push(target);
-                    }
-                    Field::Unit(other) if unit.class != other.class => {
-                        candidates.push(next);
-                        best = next_dist;
-                    }
-                    _ => (),
-                }
-            }
-
-            q_pos += 1;
+        if let Some(_) = self.adjacent_enemy(unit) {
+            return unit.pos;
         }
-        let best_pos = *candidates.iter().min().unwrap_or(&unit.pos);
-        // println!("{:?} wants to go {:?}", unit, best_pos);
 
-        // how to get there?
-        candidates.clear();
-        dist[self.to_pos(best_pos)] *= -1;
-        for next in q.iter().rev().cloned() {
-            let next_dist = dist[self.to_pos(next)];
-            if next_dist > 0 {
-                continue;
-            }
-            if next_dist == -1 {
-                candidates.push(next);
-                continue;
-            }
-            for target in next.neighbours() {
-                if dist[self.to_pos(target)] == -next_dist - 1 {
-                    dist[self.to_pos(target)] *= -1;
+        let mut dist = vec![None; self.data.len()];
+        let mut q: VecDeque<_> = self.attack_pos(unit.class).collect();
+        for x in &q {
+            dist[self.p(*x)] = Some(0);
+        }
+        while let Some(next) = q.pop_front() {
+            for target in next.neighbours().filter(|pos| self.is_empty(*pos)) {
+                if let None = dist[self.p(target)] {
+                    dist[self.p(target)] = Some(dist[self.p(next)].unwrap() + 1);
+                    q.push_back(target);
                 }
             }
         }
-
-        let result = *candidates.iter().min().unwrap_or(&unit.pos);
-        // println!("{:?} steps to {:?}", unit, result);
-        result
+        let reachable = |pos: P| dist[self.p(pos)].map(|d| (d, pos));
+        let candidates = unit.pos.neighbours().filter_map(reachable);
+        candidates.min().unwrap_or((0, unit.pos)).1
     }
 
     fn adjacent_enemy(&self, unit: &Unit) -> Option<Unit> {
@@ -212,7 +194,7 @@ fn solve(mut input: Cave, print: bool) -> usize {
     let mut full_round = true;
     let mut num_elves_died = 0;
     while !input.done() {
-        for x in input.order() {
+        for x in input.units() {
             positions.insert(x);
         }
 
@@ -262,7 +244,7 @@ fn solve(mut input: Cave, print: bool) -> usize {
     }
 
     let score: usize = input
-        .order()
+        .units()
         .map(|pos| match input.field(pos) {
             Field::Unit(x) => x.hp,
             _ => 0,
