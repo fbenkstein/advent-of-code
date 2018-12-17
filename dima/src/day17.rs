@@ -1,12 +1,16 @@
-use std::fmt::{self, Write};
-use std::ops::{Index, IndexMut};
+use itertools::Itertools;
 use text_io::{scan, try_scan};
 
-#[derive(Clone, Copy)]
+use std::fmt::{self, Write};
+use std::mem;
+use std::ops::{Index, IndexMut};
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum Tile {
     Sand,
     Clay,
     Water,
+    Flow,
     Faucet,
 }
 
@@ -17,6 +21,7 @@ impl Into<char> for Tile {
             Tile::Clay => '#',
             Tile::Water => '~',
             Tile::Faucet => '+',
+            Tile::Flow => '|',
         }
     }
 }
@@ -25,6 +30,70 @@ struct Ground {
     tiles: Vec<Tile>,
     width: usize,
     height: usize,
+    cursors: Vec<(usize, usize)>,
+}
+
+impl Ground {
+    fn flow(&mut self) -> bool {
+        let mut stack: Vec<(usize, usize)> = Vec::new();
+        mem::swap(&mut self.cursors, &mut stack);
+
+        while let Some((x, y)) = stack.pop() {
+            if y + 1 >= self.height {
+                continue;
+            }
+
+            let tile = self[(x, y)];
+            if tile != Tile::Flow && tile != Tile::Faucet {
+                continue;
+            }
+
+            match self[(x, y + 1)] {
+                Tile::Sand => {
+                    self[(x, y + 1)] = Tile::Flow;
+                    self.cursors.push((x, y + 1));
+                }
+                Tile::Clay | Tile::Water => {
+                    if self[(x - 1, y)] == Tile::Sand {
+                        self[(x - 1, y)] = Tile::Flow;
+                        self.cursors.push((x - 1, y));
+                    }
+
+                    if self[(x + 1, y)] == Tile::Sand {
+                        self[(x + 1, y)] = Tile::Flow;
+                        self.cursors.push((x + 1, y));
+                    }
+
+                    if self[(x - 1, y)] == Tile::Clay
+                        || self[(x - 1, y)] == Tile::Flow
+                        || self[(x + 1, y)] == Tile::Clay
+                        || self[(x + 1, y)] == Tile::Flow
+                    {
+                        let dneg = (0..x)
+                            .rev()
+                            .take_while(|&x| self[(x, y)] == Tile::Flow)
+                            .count();
+                        let dpos = (x + 1..self.width)
+                            .take_while(|&x| self[(x, y)] == Tile::Flow)
+                            .count();
+                        if x >= dneg + 1
+                            && self[(x - dneg - 1, y)] == Tile::Clay
+                            && self[(x + dpos + 1, y)] == Tile::Clay
+                        {
+                            for x in x - dneg..=x + dpos {
+                                self[(x, y)] = Tile::Water;
+                                if self[(x, y - 1)] == Tile::Flow {
+                                    self.cursors.push((x, y - 1));
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => (),
+            }
+        }
+        !self.cursors.is_empty()
+    }
 }
 
 impl Index<(usize, usize)> for Ground {
@@ -71,29 +140,52 @@ fn parse(input: &str) -> Ground {
         })
         .collect();
 
-    let offset = clay_tiles.iter().map(|(x, _)| x).min().unwrap() - 1;
-    let width = clay_tiles.iter().map(|(x, _)| x).max().unwrap() + 2 - offset;
-    let height = clay_tiles.iter().map(|(_, y)| y).max().unwrap() + 1;
+    let (mut offset_x, max_x) = clay_tiles
+        .iter()
+        .map(|(x, _)| *x)
+        .minmax()
+        .into_option()
+        .unwrap();
+    let (mut offset_y, max_y) = clay_tiles
+        .iter()
+        .map(|(_, y)| *y)
+        .minmax()
+        .into_option()
+        .unwrap();
+    offset_x -= 1;
+    offset_y -= 1;
+
+    let width = max_x + 2 - offset_x;
+    let height = max_y + 1 - offset_y;
     let tiles = vec![Tile::Sand; width * height];
     let mut ground = Ground {
         width,
         height,
         tiles,
+        cursors: Vec::new(),
     };
 
     for clay_pos in clay_tiles {
-        ground[(clay_pos.0 - offset, clay_pos.1)] = Tile::Clay;
+        ground[(clay_pos.0 - offset_x, clay_pos.1 - offset_y)] = Tile::Clay;
     }
     // add sprinkler
-    ground[(500 - offset, 0)] = Tile::Faucet;
+    ground[(500 - offset_x, 0)] = Tile::Faucet;
+    ground.cursors.push((500 - offset_x, 0));
 
     ground
 }
 
-pub fn solve(input: &str) -> usize {
-    let ground = parse(input);
+pub fn solve(input: &str) -> (usize, usize) {
+    let mut ground = parse(input);
+    while ground.flow() {}
     println!("{}", ground);
-    0
+    let part1 = ground
+        .tiles
+        .iter()
+        .filter(|&&t| t == Tile::Water || t == Tile::Flow)
+        .count();
+    let part2 = ground.tiles.iter().filter(|&&t| t == Tile::Water).count();
+    (part1, part2)
 }
 
 #[cfg(test)]
