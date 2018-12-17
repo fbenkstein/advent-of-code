@@ -1,44 +1,11 @@
 use std::fs::File;
 use std::io::prelude::*;
 
-use nom::types::CompleteStr;
-use nom::*;
-
-pub struct Test {
-    before: [usize; 4],
-    after: [usize; 4],
-    instruction: Instruction,
-}
-
-struct Instruction {
-    opcode: usize,
-    a: usize,
-    b: usize,
-    c: usize,
-}
-
-#[allow(non_camel_case_types)]
-pub enum Opcode {
-    addr(usize, usize, usize),
-    addi(usize, usize, usize),
-    mulr(usize, usize, usize),
-    muli(usize, usize, usize),
-    banr(usize, usize, usize),
-    bani(usize, usize, usize),
-    borr(usize, usize, usize),
-    bori(usize, usize, usize),
-    setr(usize, usize, usize),
-    seti(usize, usize, usize),
-    gtir(usize, usize, usize),
-    gtri(usize, usize, usize),
-    gtrr(usize, usize, usize),
-    eqir(usize, usize, usize),
-    eqri(usize, usize, usize),
-    eqrr(usize, usize, usize),
-}
+mod parser;
+use crate::parser::*;
 
 impl Opcode {
-    fn all(i: &Instruction) -> [Opcode; 16] {
+    fn all(i: Instruction) -> [Opcode; 16] {
         [
             Opcode::addr(i.a, i.b, i.c),
             Opcode::addi(i.a, i.b, i.c),
@@ -107,7 +74,7 @@ impl Opcode {
 impl Test {
     fn count_opcodes_that_work(&self) -> usize {
         let after = self.after;
-        Opcode::all(&self.instruction)
+        Opcode::all(self.instruction)
             .into_iter()
             .filter(|o| {
                 let mut registers = self.before.clone();
@@ -118,72 +85,71 @@ impl Test {
     }
 }
 
-named!(parse_usize(CompleteStr) -> usize,
-    map_res!(
-        do_parse!(
-            number: digit >>
-            opt!(tag!(",")) >>
-            space0 >>
-            (number)
-        ), |input: CompleteStr| usize::from_str_radix(&input, 10)
-    )
-);
+fn resolve_opcodes(tests: &Vec<Test>) -> [usize; 16] {
+    let mut vtable = [0 as usize; 16 * 16];
+    for test in tests.iter() {
+        Opcode::all(test.instruction)
+            .into_iter()
+            .enumerate()
+            .filter(|(_, opcode)| {
+                let mut registers = test.before.clone();
+                opcode.execute(&mut registers);
+                registers == test.after
+            })
+            .for_each(|(opcode_idx, _)| vtable[opcode_idx + test.instruction.opcode * 16] += 1);
+    }
 
-named!(pub parse_test<CompleteStr, Test>,
-    do_parse!(
-        opt!(line_ending) >>
-        tag!("Before:") >>
-        space0 >>
-        tag!("[") >>
-        before: count_fixed!(usize, parse_usize, 4) >>
-        tag!("]") >>
-        space0 >>
-        line_ending >>
-        opcode: parse_usize >>
-        space0 >>
-        a: parse_usize >>
-        b: parse_usize >>
-        c: parse_usize >>
-        line_ending >>
-        tag!("After:") >>
-        space0 >>
-        tag!("[") >>
-        after: count_fixed!(usize, parse_usize, 4) >>
-        tag!("]") >>
-        opt!(line_ending) >>
-        (Test { before, after, instruction: Instruction { opcode, a, b, c } })
-    )
-);
-
-named!(pub parse_tests<CompleteStr, Vec<Test>>,
-    do_parse!(
-        tests: many0!(parse_test) >>
-        (tests)
-    )
-);
+    let mut res: [usize; 16] = [0; 16];
+    let mut unresolved_opcodes: Vec<usize> = (0..16).collect();
+    while !unresolved_opcodes.is_empty() {
+        // find opcode with unique max usages
+        let (opcode_pos, &opcode, mapped_opcode) = unresolved_opcodes
+            .iter()
+            .enumerate()
+            .filter_map(|(opcode_pos, opcode)| {
+                let translation = &vtable[opcode * 16..(opcode + 1) * 16];
+                // find max pos and value of this opcode
+                let (max_pos, max_count) = translation.iter().enumerate().max_by_key(|(_, count)| *count).unwrap();
+                // check if it is unique
+                let is_unique = translation.iter().filter(|count| *count == max_count).count() == 1;
+                if is_unique {
+                    Some((opcode_pos, opcode, max_pos))
+                } else {
+                    None
+                }
+            })
+            .next()
+            .expect("some opcode should be resolvable");
+        res[opcode] = mapped_opcode;
+        // remove this mapping from all other opcodes i.e. from the column
+        for opcode in 0..16 {
+            vtable[opcode * 16 + mapped_opcode] = 0;
+        }
+        // removed this opcode from unresolved opcodes
+        unresolved_opcodes.swap_remove(opcode_pos);
+    }
+    res
+}
 
 fn main() {
     let mut file = File::open("input.txt").expect("file not found");
     let mut contents = String::new();
     file.read_to_string(&mut contents).expect("could not read file");
-    let (_, tests) = parse_tests(CompleteStr(&contents)).expect("could not parse");
+    let (_, (tests, instructions)) = parse_tests(CompleteStr(&contents)).expect("could not parse");
 
     println!(
         "Number of samples that behave like three or more opcodes: {}",
         tests.iter().filter(|&t| t.count_opcodes_that_work() >= 3).count()
     );
 
-    // Part two
-    // let mut opcodes: Vec<HashMap<String, usize>> = vec![];
-    // for _ in 0..16 {
-    //     opcodes.push(HashMap::new());
-    // }
-    // for test in tests.iter() {
-    //     let compatible_opcodes = test.try_opcodes();
-    //     for opcode in compatible_opcodes {
-    //         *opcodes[test.opcode].entry(opcode).or_default() += 1;
-    //     }
-    // }
+    let vtable = resolve_opcodes(&tests);
+    let mut registers = [0 as usize; 4];
+    for instruction in instructions.iter() {
+        Opcode::from_instruction(instruction, &vtable).execute(&mut registers);
+    }
 
-    // println!("{:?}", opcodes);
+    println!(
+        "Value is contained in register 0 after executing the test program: {}",
+        registers[0]
+    );
 }
