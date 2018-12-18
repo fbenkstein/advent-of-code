@@ -72,7 +72,7 @@ impl Area {
     fn print(&self, screen: &mut impl Write, change_pos: usize, min_y: usize) -> usize {
         let max_height = self
             .height
-            .min(termion::terminal_size().unwrap().1 as usize + 1);
+            .min(termion::terminal_size().unwrap().1 as usize);
         let mut min_y = self.height.saturating_sub(max_height).min(min_y);
         if change_pos < min_y || change_pos >= min_y + max_height {
             min_y = self
@@ -80,7 +80,7 @@ impl Area {
                 .saturating_sub(max_height)
                 .min(change_pos.saturating_sub(10));
         }
-        write!(screen, "{}{}", clear::All, cursor::Goto(1, 1)).unwrap();
+        write!(screen, "{}", cursor::Goto(1, 1)).unwrap();
         for y in min_y..min_y + max_height {
             for x in 0..self.width {
                 let out = match self.block((x, y)) {
