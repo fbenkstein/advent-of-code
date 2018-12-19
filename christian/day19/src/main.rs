@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate text_io;
+use itertools::Itertools;
+use std::str::FromStr;
 
 use std::io::{self, prelude::*};
 
@@ -95,12 +97,12 @@ fn exec(state: &mut State, i: &Instruction) {
     }
 }
 
-fn print(pos: usize, state: &State, i: &Instruction) {
+fn print(indent: bool, pos: usize, state: &State, i: &Instruction) -> (bool, String) {
     let r = |x: usize| {
         if x == state.i {
-            format!("{}: Goto 1+", pos)
+            format!("Goto 1 +")
         } else {
-            format!("{}: r{} = ", pos, x)
+            format!("r{} =", x)
         }
     };
     let v = |x: usize| {
@@ -110,27 +112,56 @@ fn print(pos: usize, state: &State, i: &Instruction) {
             format!("r{}", x)
         }
     };
-    match i.opcode {
-        Opcode::Addr => println!("{} {} + {}", r(i.d[2]), v(i.d[0]), v(i.d[1])),
-        Opcode::Addi => println!("{} {} + {}", r(i.d[2]), v(i.d[0]), i.d[1]),
-        Opcode::Mulr => println!("{} {} * {}", r(i.d[2]), v(i.d[0]), v(i.d[1])),
-        Opcode::Muli => println!("{} {} * {}", r(i.d[2]), v(i.d[0]), i.d[1]),
-        Opcode::Banr => println!("{} {} & {}", r(i.d[2]), v(i.d[0]), v(i.d[1])),
-        Opcode::Bani => println!("{} {} & {}", r(i.d[2]), v(i.d[0]), i.d[1]),
-        Opcode::Borr => println!("{} {} | {}", r(i.d[2]), v(i.d[0]), v(i.d[1])),
-        Opcode::Bori => println!("{} {} | {}", r(i.d[2]), v(i.d[0]), i.d[1]),
-        Opcode::Setr => println!("{} {}", r(i.d[2]), v(i.d[0])),
-        Opcode::Seti => println!("{} {}", r(i.d[2]), i.d[0]),
-        Opcode::Gtir => println!("{} {} > {}", r(i.d[2]), i.d[0], v(i.d[1])),
-        Opcode::Gtri => println!("{} {} > {}", r(i.d[2]), v(i.d[0]), i.d[1]),
-        Opcode::Gtrr => println!("{} {} > {}", r(i.d[2]), v(i.d[0]), v(i.d[1])),
-        Opcode::Eqir => println!("{} {} == {}", r(i.d[2]), i.d[0], v(i.d[1])),
-        Opcode::Eqri => println!("{} {} == {}", r(i.d[2]), v(i.d[0]), i.d[1]),
-        Opcode::Eqrr => println!("{} {} == {}", r(i.d[2]), v(i.d[0]), v(i.d[1])),
-    }
+    let binary = |r: String, left: String, op: char, right: String| {
+        let (&left, &right) = [&left, &right].iter().minmax().into_option().unwrap();
+        if r == "Goto 1 +" && left == &format!("{}", pos) && right.starts_with("r") && op == '+' {
+            return format!("if !{}", right);
+        }
+        if r == "Goto 1 +" && !left.starts_with("r") && !right.starts_with("r") && op == '+' {
+            return format!(
+                "Goto {:02}",
+                usize::from_str(left).unwrap() + usize::from_str(right).unwrap() + 1
+            );
+        }
+        if r[0..2] != *left && r[0..2] != *right {
+            return format!("{} {} {} {}", r, left, op, right);
+        }
+        let other = if r[0..2] != *left { left } else { right };
+        format!("{} {}= {}", &r[0..2], op, other)
+    };
+    let set = |r: String, other: String| {
+        if r == "Goto 1 +" && !other.starts_with("r") {
+            return format!("Goto {:02}", usize::from_str(&other).unwrap() + 1);
+        }
+
+        format!("{} {}", r, other)
+    };
+    let result = match i.opcode {
+        Opcode::Addr => binary(r(i.d[2]), v(i.d[0]), '+', v(i.d[1])),
+        Opcode::Addi => binary(r(i.d[2]), v(i.d[0]), '+', format!("{}", i.d[1])),
+        Opcode::Mulr => binary(r(i.d[2]), v(i.d[0]), '*', v(i.d[1])),
+        Opcode::Muli => binary(r(i.d[2]), v(i.d[0]), '*', format!("{}", i.d[1])),
+        Opcode::Banr => binary(r(i.d[2]), v(i.d[0]), '&', v(i.d[1])),
+        Opcode::Bani => binary(r(i.d[2]), v(i.d[0]), '&', format!("{}", i.d[1])),
+        Opcode::Borr => binary(r(i.d[2]), v(i.d[0]), '|', v(i.d[1])),
+        Opcode::Bori => binary(r(i.d[2]), v(i.d[0]), '|', format!("{}", i.d[1])),
+        Opcode::Setr => set(r(i.d[2]), v(i.d[0])),
+        Opcode::Seti => set(r(i.d[2]), format!("{}", i.d[0])),
+        Opcode::Gtir => format!("{} {} > {}", r(i.d[2]), i.d[0], v(i.d[1])),
+        Opcode::Gtri => format!("{} {} > {}", r(i.d[2]), v(i.d[0]), i.d[1]),
+        Opcode::Gtrr => format!("{} {} > {}", r(i.d[2]), v(i.d[0]), v(i.d[1])),
+        Opcode::Eqir => format!("{} {} == {}", r(i.d[2]), i.d[0], v(i.d[1])),
+        Opcode::Eqri => format!("{} {} == {}", r(i.d[2]), v(i.d[0]), i.d[1]),
+        Opcode::Eqrr => format!("{} {} == {}", r(i.d[2]), v(i.d[0]), v(i.d[1])),
+    };
+    let indent = if indent { "    " } else { " " };
+    (
+        result.starts_with("if"),
+        format!("{:02}:{} {}", pos, indent, result),
+    )
 }
 
-fn run((initial_state, program): &(State, Vec<Instruction>)) {
+fn run((initial_state, program): &(State, Vec<Instruction>)) -> State {
     let mut state: State = initial_state.clone();
     let mut pos = 0;
     while pos < program.len() {
@@ -139,7 +170,7 @@ fn run((initial_state, program): &(State, Vec<Instruction>)) {
         pos = state.r[state.i];
         pos += 1;
     }
-    println!("Result {:?}", state);
+    state
 }
 
 fn run_eq(num: usize) {
@@ -151,10 +182,32 @@ fn main() {
     let stdin = io::stdin();
     let lines: Vec<_> = stdin.lock().lines().map(|x| x.unwrap()).collect();
     let input = parse(&lines);
+    let res1 = run(&input);
+    println!("Result {:?}", res1);
+    let mut indent = false;
+    let mut out = Vec::new();
     for (pos, x) in input.1.iter().enumerate() {
-        print(pos, &input.0, x);
+        let line = print(indent, pos, &input.0, x);
+        indent = line.0;
+        out.push(line.1);
     }
-    run(&input);
+    let destinations: Vec<_> = out
+        .iter()
+        .filter_map(|line| {
+            if let Some(pos) = line.find("Goto") {
+                return Some(String::from_str(&line[pos + 5..]).unwrap());
+            }
+            None
+        })
+        .collect();
+    for line in out.iter() {
+        let prefix_pos = line.find(":").unwrap();
+        if let None = destinations.iter().find(|x| **x == line[..prefix_pos]) {
+            println!("    {}", &line[4..]);
+        } else {
+            println!("{}", line);
+        }
+    }
     run_eq(939);
     run_eq(10551339);
 }
