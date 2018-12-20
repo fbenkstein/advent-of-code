@@ -1,99 +1,81 @@
 use itertools::Itertools;
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashSet, VecDeque};
 use std::io::{self, prelude::*};
 
-fn insert(
-    result: &mut Vec<((isize, isize), (isize, isize))>,
-    positions: &mut Vec<HashSet<(isize, isize)>>,
-    i: usize,
-    dx: isize,
-    dy: isize,
-) {
-    let (first, other) = positions.split_at_mut(i + 1);
-    for pos in &first[i] {
-        let next = (pos.0 + dx, pos.1 + dy);
-        other[0].insert(next);
-        result.push((*pos, next));
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+struct P {
+    x: isize,
+    y: isize,
+}
+
+fn p(x: isize, y: isize) -> P {
+    P { x, y }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+struct Edge {
+    from: P,
+    to: P,
+}
+
+fn insert(result: &mut Vec<Edge>, positions: &mut Vec<P>, delta: P) {
+    for pos in positions.iter_mut() {
+        let from = *pos;
+        pos.x += delta.x;
+        pos.y += delta.y;
+        result.push(Edge { from, to: *pos });
     }
 }
 
-fn find_ors(input: impl Iterator<Item = (usize, u8)>) -> impl Iterator<Item = usize> {
-    input
-        .scan(0_isize, |count, (pos, c)| {
-            if c == b'(' || c == b'^' {
-                *count += 1;
-            }
-            if c == b')' || c == b'$' {
-                *count -= 1;
-            }
-            if *count == 0 {
-                return None;
-            }
-            if c == b'|' && count.abs() == 1 {
-                Some(Some(pos))
-            } else {
-                Some(None)
-            }
-        })
-        .filter_map(|x| x)
-}
-
-fn trace(input: &[u8]) -> Vec<((isize, isize), (isize, isize))> {
+fn trace(input: &[u8]) -> Vec<Edge> {
     let mut result = Vec::new();
-    let mut positions = vec![HashSet::new(); input.len()];
-    positions[0].insert((0, 0));
-    for (i, &c) in input.iter().enumerate() {
+    let mut stack = vec![(vec![p(0, 0)], Vec::new()); 1];
+    for &c in input.iter() {
         match c {
-            b'N' => insert(&mut result, &mut positions, i, 0, -1),
-            b'S' => insert(&mut result, &mut positions, i, 0, 1),
-            b'W' => insert(&mut result, &mut positions, i, -1, 0),
-            b'E' => insert(&mut result, &mut positions, i, 1, 0),
-            b'(' | b'^' => {
-                positions[i + 1] = positions[i].clone();
-                for or in find_ors(input.iter().cloned().enumerate().skip(i)) {
-                    positions[or + 1] = positions[i].clone()
-                }
+            b'N' => insert(&mut result, &mut stack.last_mut().unwrap().0, p(0, -1)),
+            b'S' => insert(&mut result, &mut stack.last_mut().unwrap().0, p(0, 1)),
+            b'W' => insert(&mut result, &mut stack.last_mut().unwrap().0, p(-1, 0)),
+            b'E' => insert(&mut result, &mut stack.last_mut().unwrap().0, p(1, 0)),
+            b'(' | b'^' => stack.push((stack.last().unwrap().0.clone(), Vec::new())),
+            b')' | b'$' => {
+                let (positions, mut choices) = stack.pop().unwrap();
+                choices.extend(positions);
+                choices.sort();
+                choices.dedup();
+                stack.last_mut().unwrap().0 = choices;
             }
-            b')' => {
-                positions[i + 1] = positions[i].clone();
-                for or in find_ors(input[..=i].iter().cloned().enumerate().rev()) {
-                    let copy = positions[or].clone();
-                    positions[i + 1].extend(copy);
-                }
+            b'|' => {
+                let (positions, mut choices) = stack.pop().unwrap();
+                choices.extend(positions);
+                stack.push((stack.last().unwrap().0.clone(), choices));
             }
-            b'|' => (),
-            b'$' => (),
             _ => panic!("Invalid input"),
         }
     }
     result
 }
 
-fn bfs(input: &Vec<((isize, isize), (isize, isize))>) -> (usize, usize) {
-    let edges: HashMap<_, Vec<_>> = input
-        .iter()
-        .sorted()
-        .iter()
-        .group_by(|(from, _)| from)
-        .into_iter()
-        .map(|(k, v)| (k, v.map(|(_, to)| to).collect()))
-        .collect();
-    let mut visited = HashSet::new();
-    visited.insert((0, 0));
-    let mut q = VecDeque::new();
-    q.push_back((0, (0, 0)));
-    let mut max_dist = 0;
-    let mut num_long = 0;
+fn get_edges<'a>(edges: &'a Vec<Edge>, from: P) -> impl Iterator<Item = P> + 'a {
+    let to = p(isize::min_value(), isize::min_value());
+    let edge = Edge { from, to };
+    let start = edges.binary_search(&edge).unwrap_or_else(|x| x);
+    let suffix = edges[start..].iter();
+    suffix.take_while(move |e| e.from == from).map(|e| e.to)
+}
+
+fn bfs(input: &Vec<Edge>) -> (usize, usize) {
+    let edges = input.iter().cloned().sorted();
+    let mut visited: HashSet<_> = [p(0, 0)].iter().cloned().collect();
+    let mut q: VecDeque<_> = [(0, p(0, 0))].iter().cloned().collect();
+    let (mut max_dist, mut num_long) = (0, 0);
     while let Some((dist, next)) = q.pop_front() {
-        if let Some(edges) = edges.get(&next) {
-            for &&to in edges {
-                if visited.insert(to) {
-                    q.push_back((dist + 1, to));
-                    max_dist = dist + 1;
-                    if dist + 1 >= 1000 {
-                        num_long += 1;
-                    }
+        for to in get_edges(&edges, next) {
+            if visited.insert(to) {
+                max_dist = dist + 1;
+                q.push_back((max_dist, to));
+                if max_dist >= 1000 {
+                    num_long += 1;
                 }
             }
         }
@@ -101,19 +83,15 @@ fn bfs(input: &Vec<((isize, isize), (isize, isize))>) -> (usize, usize) {
     (max_dist, num_long)
 }
 
-fn print(input: &Vec<((isize, isize), (isize, isize))>) -> Vec<Vec<u8>> {
-    let (min, max) = input
-        .iter()
-        .map(|(from, _)| from)
-        .chain(input.iter().map(|(_, to)| to))
-        .minmax()
-        .into_option()
-        .unwrap();
-    let dim = ((max.0 - min.0) as usize, (max.1 - min.1) as usize);
+fn print(input: &Vec<Edge>) -> Vec<Vec<u8>> {
+    let froms = input.iter().map(|e| e.from);
+    let tos = input.iter().map(|e| e.to);
+    let (min, max) = froms.chain(tos).minmax().into_option().unwrap();
+    let dim = ((max.x - min.x) as usize, (max.y - min.y) as usize);
     let mut out = vec![vec![b'#'; dim.0 * 2 + 3]; dim.1 * 2 + 3];
-    let coord = |x: (isize, isize)| ((x.0 - min.0) as usize, (x.1 - min.1) as usize);
-    for &(from, to) in input {
-        let (from, to) = (coord(from), coord(to));
+    let coord = |p: P| ((p.x - min.x) as usize, (p.y - min.y) as usize);
+    for e in input {
+        let (from, to) = (coord(e.from), coord(e.to));
         out[from.1 * 2 + 1][from.0 * 2 + 1] = b'.';
         out[to.1 * 2 + 1][to.0 * 2 + 1] = b'.';
         if from.1 != to.1 {
@@ -122,7 +100,7 @@ fn print(input: &Vec<((isize, isize), (isize, isize))>) -> Vec<Vec<u8>> {
             out[to.1 * 2 + 1][from.0 + to.0 + 1] = b'|';
         }
     }
-    let origin = coord((0, 0));
+    let origin = coord(p(0, 0));
     out[origin.1 * 2 + 1][origin.0 * 2 + 1] = b'X';
     out
 }
