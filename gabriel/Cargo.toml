@@ -18,4 +18,5 @@ members = [
     "day16",
     # day 17 was done in collaboration with dima
     "day18",
+    "day19",
 ]
