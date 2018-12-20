@@ -53,7 +53,7 @@ named!(parse_usize(CompleteStr) -> usize,
     )
 );
 
-named!(parse_instruction<CompleteStr, Instruction>,
+named!(pub parse_instruction<CompleteStr, Instruction>,
     do_parse!(
         opcode: map!(take!(4), |c: CompleteStr| c.to_string()) >>
         space0 >>

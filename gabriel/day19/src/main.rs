@@ -5,39 +5,52 @@ use crate::parser::*;
 use std::fs::File;
 use std::io::prelude::*;
 
-use log::debug;
-
 fn main() {
     let mut file = File::open("input.txt").expect("file not found");
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .expect("could not read file");
 
-    let (ip_reg, instructions) = parser::parse_instructions(CompleteStr(&contents))
+    let (ip_reg, mut instructions) = parser::parse_instructions(CompleteStr(&contents))
         .expect("Could not parse?")
         .1;
 
+    let mut registers: Registers = [0; 6];
+    run(ip_reg, &instructions, &mut registers);
+    println!("Registers after execution of program: {:?}", registers);
+
+    let mut registers: Registers = [1, 0, 0, 0, 0, 0];
+    run(ip_reg, &instructions, &mut registers);
+    println!("Registers after execution of program: {:?}", registers);
+    let p2 = registers[2];
     println!(
-        "Registers after execution of program: {:?}",
-        run(ip_reg, instructions)
+        "The program is trying to do: {}",
+        p2 + (1..=p2 / 2).filter(|x| p2 % x == 0).sum::<usize>()
     );
 }
 
-fn run(ip_reg: usize, instructions: Vec<Instruction>) -> Registers {
+fn run(ip_reg: usize, instructions: &Vec<Instruction>, registers: &mut Registers) {
     let mut instruction_pointer = 0;
-    let mut registers: Registers = [0; 6];
+    let mut halt_counter = 0;
 
-    loop {
+    while instruction_pointer < instructions.len() {
         registers[ip_reg] = instruction_pointer;
 
         if let Some(instruction) = &instructions.get(instruction_pointer) {
-            debug!("ip={} {:?} ", instruction_pointer, registers);
-            instruction.execute(&mut registers);
+            instruction.execute(registers);
             instruction_pointer = registers[ip_reg];
+            if instruction_pointer == 1 {
+                print!("ip={:<2} {:<4?} ", instruction_pointer, registers);
+                println!("{} {:<4?}", instruction, registers);
+                halt_counter += 1;
+                if halt_counter > 5 {
+                    println!("OS HALTED EXECUTION");
+                    return;
+                }
+            }
             instruction_pointer += 1;
-            debug!("{} {:?}", instruction, registers);
         } else {
-            return registers;
+            return;
         }
     }
 }
