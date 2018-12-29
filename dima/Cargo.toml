@@ -10,3 +10,7 @@ regex = "*"
 lazy_static = "*"
 text_io = "0.1.7"
 primal = "0.2.3"
+
+[dependencies.nom]
+version = "^4.1"
+features = ["verbose-errors"]
