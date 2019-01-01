@@ -10,6 +10,8 @@ regex = "*"
 lazy_static = "*"
 text_io = "0.1.7"
 primal = "0.2.3"
+priority-queue = "0.5.2"
+revord = "0.0.2"
 
 [dependencies.nom]
 version = "^4.1"
