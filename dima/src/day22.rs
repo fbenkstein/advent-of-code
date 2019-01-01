@@ -1,6 +1,5 @@
 use priority_queue::PriorityQueue;
 use revord::RevOrd;
-use std::cmp::{Ord, Ordering};
 use std::collections::{btree_map, BTreeMap};
 use std::usize;
 use text_io::{scan, try_scan};
