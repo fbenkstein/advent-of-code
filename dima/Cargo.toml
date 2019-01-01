@@ -5,9 +5,9 @@ authors = ["boxdot <d@zerovolt.org>"]
 edition = "2018"
 
 [dependencies]
-itertools = "*"
-regex = "*"
-lazy_static = "*"
+itertools = "0.7.11"
+regex = "1.1.0"
+lazy_static = "1.2.0"
 text_io = "0.1.7"
 primal = "0.2.3"
 priority-queue = "0.5.2"
