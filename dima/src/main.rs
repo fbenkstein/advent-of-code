@@ -13,6 +13,7 @@ mod day2;
 mod day20;
 mod day21;
 mod day22;
+mod day23;
 mod day3;
 mod day4;
 mod day5;
@@ -63,6 +64,7 @@ fn main() -> Result<(), Box<Error>> {
         20 => println!("{:?}", day20::solve(&input)),
         21 => println!("{:?}", day21::solve(&input)),
         22 => println!("{:?}", day22::solve(&input)),
+        23 => println!("{:?}", day23::solve(&input)),
         _ => eprintln!("invalid day: {}", day),
     }
     Ok(())
