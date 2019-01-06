@@ -5,3 +5,5 @@ authors = ["Gabriel Feron <feron.gabriel@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+priority-queue = "*"
+revord = "*"

@@ -1,3 +1,6 @@
+use priority_queue::PriorityQueue;
+use revord::RevOrd;
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashSet, VecDeque};
 use std::fmt;
 
 struct Cave {
@@ -15,9 +18,9 @@ enum Region {
     Narrow,
 }
 
-impl Region {
-    fn from(depth: usize, geological_index: usize) -> Region {
-        match (geological_index + depth) % 20183 % 3 {
+impl From<usize> for Region {
+    fn from(erosion_level: usize) -> Region {
+        match erosion_level % 3 {
             0 => Region::Rocky,
             1 => Region::Wet,
             2 => Region::Narrow,
@@ -26,10 +29,25 @@ impl Region {
     }
 }
 
+#[derive(PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
+enum Tool {
+    ClimbingGear,
+    Torch,
+    Neither,
+}
+
+// impl From<Region> for Tool {
+//     fn from(region: Region) -> Tool {
+//         match region {
+
+//         }
+//     }
+// }
+
 impl Cave {
     fn new(depth: usize, (target_x, target_y): (usize, usize)) -> Cave {
-        let width = target_x + 1;
-        let height = target_y + 1;
+        let width = target_x + 6;
+        let height = target_y + 6;
         let mut regions: Vec<usize> = vec![0; width * height];
         for y in 0..height {
             for x in 0..width {
@@ -65,6 +83,111 @@ impl Cave {
             }
         }
         risk
+    }
+
+    fn pathfind(&self) -> usize {
+        // find all reachable tiles for this unit
+        let mut reachable = BTreeMap::new();
+        let mut queue = PriorityQueue::new();
+        let start = ((0, 0), Tool::Torch);
+        reachable.insert(start, 0);
+        queue.push(start, RevOrd(0));
+
+        while let Some((((x, y), tool), cost)) = queue.pop() {
+            // special stop conditions
+            if tool == Tool::Torch && (x, y) == (self.target_x, self.target_y) {
+                return cost.0;
+            }
+
+            if reachable[&((x, y), tool)] < cost.0 {
+                continue;
+            }
+
+            for (edge, edge_cost) in self.edges(((x, y), tool)) {
+                let new_cost = cost.0 + edge_cost;
+                reachable
+                    .entry(edge)
+                    .and_modify(|e| {
+                        queue.change_priority(&edge, RevOrd(new_cost));
+                        *e = new_cost
+                    })
+                    .or_insert_with(|| {
+                        queue.push(edge, RevOrd(new_cost));
+                        new_cost
+                    });
+            }
+        }
+
+        0
+    }
+
+    /// return edges with position, tool to switch to and cost
+    fn edges(
+        &self,
+        ((x, y), tool): ((usize, usize), Tool),
+    ) -> Vec<(((usize, usize), Tool), usize)> {
+        let x = x as isize;
+        let y = y as isize;
+        let mut edges: Vec<(((usize, usize), Tool), usize)> =
+            [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
+                .into_iter()
+                .filter_map(|&(x, y)| {
+                    if x >= 0 && y >= 0 && x < self.width as isize && y < self.height as isize {
+                        let x = x as usize;
+                        let y = y as usize;
+                        match Region::from(self[(x, y)]) {
+                            Region::Rocky if tool == Tool::Torch || tool == Tool::ClimbingGear => {
+                                Some((((x, y), tool), 1))
+                            }
+                            Region::Wet if tool == Tool::ClimbingGear || tool == Tool::Neither => {
+                                Some((((x, y), tool), 1))
+                            }
+                            Region::Narrow if tool == Tool::Torch || tool == Tool::Neither => {
+                                Some((((x, y), tool), 1))
+                            }
+                            _ => None, // need to switch tool
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+        // check whether we need to switch tool
+        let x = x as usize;
+        let y = y as usize;
+        match Region::from(self[(x, y)]) {
+            Region::Rocky => {
+                if tool != Tool::Torch {
+                    edges.push((((x, y), Tool::Torch), 7));
+                }
+                if tool != Tool::ClimbingGear {
+                    edges.push((((x, y), Tool::ClimbingGear), 7));
+                }
+            }
+            Region::Wet => {
+                if tool != Tool::ClimbingGear {
+                    edges.push((((x, y), Tool::ClimbingGear), 7));
+                }
+                if tool != Tool::Neither {
+                    edges.push((((x, y), Tool::Neither), 7));
+                }
+            }
+            Region::Narrow => {
+                if tool != Tool::Torch {
+                    edges.push((((x, y), Tool::Torch), 7));
+                }
+                if tool != Tool::ClimbingGear {
+                    edges.push((((x, y), Tool::ClimbingGear), 7));
+                }
+            }
+        }
+
+        if (x, y) == (self.target_x, self.target_y) {
+            edges.push((((x, y), Tool::Torch), 7));
+        }
+
+        edges
     }
 }
 
@@ -108,8 +231,13 @@ impl fmt::Display for Cave {
 }
 
 fn main() {
+    // let cave = Cave::new(510, (10, 10));
+    // println!("{}", cave);
+
     let cave = Cave::new(4845, (6, 770));
     println!("{}", cave);
+
+    println!("{}", cave.pathfind());
 }
 
 #[test]
@@ -122,4 +250,10 @@ fn example() {
     assert_eq!(cave[(10, 10)], 510);
 
     assert_eq!(cave.risk_level(), 114);
+}
+
+#[test]
+fn pathfinding() {
+    let cave = Cave::new(510, (10, 10));
+    assert_eq!(cave.pathfind(), 45);
 }
